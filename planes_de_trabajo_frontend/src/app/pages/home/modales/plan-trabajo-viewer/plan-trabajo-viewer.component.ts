@@ -1,0 +1,946 @@
+import { Component, Input, OnInit, OnDestroy, AfterViewInit, ElementRef, ViewChild, Output, EventEmitter } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
+import { TagModule } from 'primeng/tag';
+import { ProgressBarModule } from 'primeng/progressbar';
+import { DividerModule } from 'primeng/divider';
+import { PanelModule } from 'primeng/panel';
+import { ScrollPanelModule } from 'primeng/scrollpanel';
+import { BadgeModule } from 'primeng/badge';
+import { SkeletonModule } from 'primeng/skeleton';
+import { SeccionService } from '../../../../core/services/seccion.service';
+import { SeccionHijo, SeccionPadre } from 'apps/planes_de_trabajo/src/app/core/models/seccion.model';
+import { PlanDeTrabajoService } from '../../../../core/services/planDeTrabajo.service';
+import { ActividadesPlanDeTrabajoService } from '../../../../core/services/actividadesPlanDeTrabajo.service';
+import { CursoService } from '../../../../core/services/curso.service';
+import { FirmaService } from '../../../../core/services/firma.service';
+import { PlanDeTrabajoModel } from '../../../../core/models/planDeTrabajo.model';
+import { ActividadPlanDeTrabajo } from '../../../../core/models/actividadesPlanDeTrabajo.model';
+import { Curso } from '../../../../core/models/curso.model';
+import { Profesor } from 'apps/planes_de_trabajo/src/app/core/models/profesor.model';
+import { ProfesorService } from 'apps/planes_de_trabajo/src/app/core/services/profesor.service';
+import { DialogModule } from 'primeng/dialog';
+import { TooltipModule } from 'primeng/tooltip';
+import { TextareaModule } from 'primeng/textarea';
+import { InvestigacioneService } from 'apps/planes_de_trabajo/src/app/core/services/investigaciones.service';
+import { Investigaciones } from 'apps/planes_de_trabajo/src/app/core/models/investigaciones.model';
+import { Message } from 'primeng/message';
+import { MessageService } from 'primeng/api';
+import { delay } from 'rxjs';
+import { NotificacionesPlanTrabajoService } from '../../../../core/services/notificaciones-plan-trabajo.service';
+
+@Component({
+  selector: 'app-plan-trabajo-viewer',
+  standalone: true,
+  imports: [
+    CommonModule,
+    CardModule,
+    ButtonModule,
+    TagModule,
+    ProgressBarModule,
+    DividerModule,
+    PanelModule,
+    ScrollPanelModule,
+    BadgeModule,
+    SkeletonModule,
+    DialogModule,
+    TooltipModule,
+    FormsModule,
+    InputNumberModule,
+    TextareaModule,
+    Message
+  ],
+  templateUrl: './plan-trabajo-viewer.component.html',
+  styleUrl: './plan-trabajo-viewer.component.scss'
+})
+export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
+  @Input() planDeTrabajoId!: string;
+  @Input() profesorId!: string;
+  @Input() rolUsuario: 'DECANO' | 'DIRECTOR' | 'PROFESOR' | string = 'PROFESOR';
+
+  seccionesPadres: SeccionPadre[] = [];
+  planDeTrabajo: PlanDeTrabajoModel | null = null;
+  actividadesPlanDeTrabajo: ActividadPlanDeTrabajo[] = [];
+  asignaturas: Curso[] = [];
+  loading = true;
+  error = '';
+  totalHorasAsignadas = 0;
+  totalHorasDisponibles = 40;
+  porcentajeCompletado = 0;
+
+  profesorInfo: Profesor | null = null;
+  directorInfo: Profesor | null = null;
+  decanoInfo: Profesor | null = null;
+  rechazadoPorDecano = false;
+  mostrarModalMotivoRechazo = false;
+  modoResumido = true;
+  investigacionesPorSeccion: Map<string, Investigaciones[]> = new Map();
+  mostrarModalConfirmacionCambio = false;
+  descripcionCambio = '';
+
+  estadoFirmas: {
+    enviadoProfesor: boolean;
+    firmaProfesor: boolean;
+    firmaDirector: boolean;
+    firmaDecano: boolean;
+  } = {
+      enviadoProfesor: false,
+      firmaProfesor: false,
+      firmaDirector: false,
+      firmaDecano: false
+    };
+
+  constructor(
+    private seccionService: SeccionService,
+    private planDeTrabajoService: PlanDeTrabajoService,
+    private actividadesPlanDeTrabajoService: ActividadesPlanDeTrabajoService,
+    private investigacionService: InvestigacioneService,
+    private cursoService: CursoService,
+    private firmaService: FirmaService,
+    private profesorService: ProfesorService,
+    private messageService: MessageService,
+    private notificacionesService: NotificacionesPlanTrabajoService
+  ) { }
+
+  @ViewChild('planContent') planContent?: ElementRef;
+
+  ngAfterViewInit(): void {
+    const seccionObjetivo = localStorage.getItem('seccionObjetivo');
+    if (seccionObjetivo) {
+      setTimeout(() => {
+        const elemento = document.getElementById(seccionObjetivo);
+        if (elemento) {
+          const originalBg = elemento.style.backgroundColor;
+          elemento.style.backgroundColor = 'rgba(79, 195, 247, 0.2)';
+          elemento.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => {
+            elemento.style.backgroundColor = originalBg;
+          }, 1500);
+        }
+        localStorage.removeItem('seccionObjetivo');
+      }, 100);
+    }
+  }
+
+  ngOnInit() {
+    this.cargarPlanDeTrabajo();
+    const checkAndScroll = () => {
+      const seccionId = localStorage.getItem('seccionObjetivo');
+      if (seccionId && !this.loading && this.planDeTrabajo) {
+        setTimeout(() => {
+          const elemento = document.getElementById(seccionId);
+          if (elemento) {
+            elemento.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            elemento.style.backgroundColor = 'rgba(79, 195, 247, 0.2)';
+            setTimeout(() => {
+              elemento.style.backgroundColor = '';
+            }, 1500);
+          }
+          localStorage.removeItem('seccionObjetivo');
+        }, 300);
+      }
+    };
+    checkAndScroll();
+  }
+
+  ngOnDestroy() {
+  }
+
+  cargarPlanDeTrabajo() {
+    this.loading = true;
+    this.error = '';
+
+    this.planDeTrabajoService.getById(this.planDeTrabajoId)
+      .subscribe({
+        next: (planDeTrabajo: PlanDeTrabajoModel) => {
+          this.planDeTrabajo = planDeTrabajo;
+          this.rechazadoPorDecano = (planDeTrabajo.rechazado === true &&
+            planDeTrabajo.estado !== 'RECHAZADO'
+          );
+          this.cargarSecciones(planDeTrabajo.plantilla.id);
+          this.cargarActividadesPlanDeTrabajo();
+          this.cargarAsignaturas();
+          this.cargarEstadoFirmas();
+          this.cargarInformacionFirmantes(planDeTrabajo);
+        },
+        error: (error: any) => {
+          this.error = 'Error al cargar el plan de trabajo';
+          this.loading = false;
+        }
+      });
+  }
+
+  private cargarEstadoFirmas(): void {
+    if (!this.planDeTrabajo) return;
+    if (this.rechazadoPorDecano) {
+      this.estadoFirmas = {
+        enviadoProfesor: this.planDeTrabajo.enviadoProfesor || false,
+        firmaProfesor: this.planDeTrabajo.firmaProfesor || false,
+        firmaDirector: this.planDeTrabajo.firmaDirector || false,
+        firmaDecano: this.planDeTrabajo.firmaDecano || false
+      };
+    } else {
+      this.firmaService.getEstadoPlanDeTrabajo(this.planDeTrabajoId)
+        .subscribe({
+          next: (estado) => {
+            this.estadoFirmas = {
+              enviadoProfesor: estado.enviadoProfesor,
+              firmaProfesor: estado.firmaProfesor,
+              firmaDirector: estado.firmaDirector,
+              firmaDecano: estado.firmaDecano
+            };
+          },
+          error: (error) => {
+          }
+        });
+    }
+  }
+
+  private cargarInformacionFirmantes(planDeTrabajo: PlanDeTrabajoModel): void {
+    this.profesorService.getById(this.profesorId).subscribe({
+      next: (profesor) => {
+        this.profesorInfo = profesor;
+        if (profesor) {
+          this.totalHorasDisponibles = this.determinarHorasDisponibles(profesor);
+          this.calcularTotales();
+        }
+      },
+      error: (error) => {
+      }
+    });
+
+    if (planDeTrabajo.idDirector) {
+      this.profesorService.getById(planDeTrabajo.idDirector).subscribe({
+        next: (director) => {
+          this.directorInfo = director;
+        },
+        error: (error) => {
+        }
+      });
+    }
+
+    if (planDeTrabajo.idDecano) {
+      this.profesorService.getById(planDeTrabajo.idDecano).subscribe({
+        next: (decano) => {
+          this.decanoInfo = decano;
+        },
+        error: (error) => {
+        }
+      });
+    }
+  }
+
+  private determinarHorasDisponibles(profesor: Profesor): number {
+    if (profesor.dedicacion) {
+      const dedicacionUpper = profesor.dedicacion.toUpperCase();
+      if (dedicacionUpper.includes('TIEMPO COMPLETO') || dedicacionUpper === 'TC') {
+        return 40;
+      }
+      if (dedicacionUpper.includes('MEDIO TIEMPO') || dedicacionUpper === 'MT') {
+        return 20;
+      }
+    }
+
+    if (profesor.escalafon) {
+      const escalafonUpper = profesor.escalafon.toUpperCase();
+      if (escalafonUpper.includes('TC') || escalafonUpper.includes('TIEMPO COMPLETO')) {
+        return 40;
+      }
+      if (escalafonUpper.includes('MT') || escalafonUpper.includes('MEDIO TIEMPO')) {
+        return 20;
+      }
+    }
+    return 20;
+  }
+
+  cargarSecciones(plantillaId: string) {
+    this.seccionService.getByPlantilla(plantillaId)
+      .subscribe({
+        next: (secciones: SeccionPadre[]) => {
+          this.seccionesPadres = secciones;
+          this.cargarInvestigaciones();
+        },
+        error: (error: any) => {
+        }
+      });
+  }
+
+  cargarInvestigaciones(): void {
+    if (!this.planDeTrabajo) return;
+    const seccionesInvestigativas = this.obtenerSeccionesInvestigativas();
+
+    if (seccionesInvestigativas.length === 0) {
+      this.investigacionesPorSeccion.clear();
+      this.calcularTotales();
+      return;
+    }
+    this.investigacionesPorSeccion.clear();
+    const cargas = seccionesInvestigativas.map(seccion =>
+      this.investigacionService.getByPt(this.planDeTrabajoId, seccion.id)
+        .toPromise()
+        .then(resultado => {
+          const investigaciones = (!resultado) ? [] : (Array.isArray(resultado) ? resultado : [resultado]);
+          this.investigacionesPorSeccion.set(seccion.id, investigaciones.filter(inv => inv != null));
+          return { seccionId: seccion.id, investigaciones };
+        })
+        .catch(error => {
+          this.investigacionesPorSeccion.set(seccion.id, []);
+          return { seccionId: seccion.id, investigaciones: [] };
+        })
+    );
+
+    Promise.all(cargas).then(() => {
+      this.calcularTotales();
+    }).catch(error => {
+      this.investigacionesPorSeccion.clear();
+      this.calcularTotales();
+    });
+  }
+
+  cargarActividadesPlanDeTrabajo() {
+    this.actividadesPlanDeTrabajoService.getByPtId(this.planDeTrabajoId)
+      .subscribe({
+        next: (actividades: ActividadPlanDeTrabajo[]) => {
+          this.actividadesPlanDeTrabajo = actividades;
+          this.calcularTotales();
+          this.loading = false;
+        },
+        error: (error: any) => {
+          this.loading = false;
+        }
+      });
+  }
+
+  cargarAsignaturas() {
+    this.cursoService.getByProfesor(this.profesorId)
+      .subscribe({
+        next: (asignaturas: Curso[]) => {
+          this.asignaturas = asignaturas;
+          this.calcularTotales();
+        },
+        error: (error: any) => {
+        }
+      });
+  }
+
+  calcularTotales() {
+    const horasActividades = this.actividadesPlanDeTrabajo.reduce((total, actividad) => {
+      return total + (actividad.horas || 0);
+    }, 0);
+
+    const horasCursos = this.asignaturas.reduce((total, asignatura) => {
+      return total + (asignatura.horasPresenciales || 0);
+    }, 0);
+
+    let horasInvestigacion = 0;
+    this.investigacionesPorSeccion.forEach((investigaciones) => {
+      horasInvestigacion += investigaciones.reduce((total, inv) => {
+        return total + (inv.horas || 0);
+      }, 0);
+    });
+
+    this.totalHorasAsignadas = horasActividades + horasCursos + horasInvestigacion;
+
+    this.porcentajeCompletado = Math.round((this.totalHorasAsignadas / this.totalHorasDisponibles) * 100);
+  }
+
+  getActividadesPorSeccion(seccionHijo: SeccionHijo): ActividadPlanDeTrabajo[] {
+    if (!seccionHijo.actividades || !Array.isArray(seccionHijo.actividades)) {
+      return [];
+    }
+
+    return this.actividadesPlanDeTrabajo.filter(actividad => {
+      if (!actividad.actividades || !actividad.actividades.id) {
+        return false;
+      }
+      return seccionHijo.actividades.some(actRef => actRef.id === actividad.actividades.id);
+    });
+  }
+
+  getTotalHorasSeccion(seccionHijo: SeccionHijo): number {
+    let totalHoras = 0;
+
+    if (seccionHijo.seccionCursos) {
+      totalHoras = this.getAsignaturasPorSeccion(seccionHijo).reduce((total, asignatura) =>
+        total + (asignatura.horasPresenciales || 0), 0);
+    } else if (seccionHijo.seccionInvestigativa) {
+      totalHoras = this.getInvestigacionesPorSeccion(seccionHijo).reduce((total, inv) =>
+        total + (inv.horas || 0), 0);
+    } else {
+      const actividades = this.getActividadesPorSeccion(seccionHijo);
+      totalHoras = actividades.reduce((total, actividad) => total + (actividad.horas || 0), 0);
+    }
+
+    return totalHoras;
+  }
+
+  getAsignaturasPorSeccion(seccionHijo: SeccionHijo): Curso[] {
+    if (seccionHijo.seccionCursos) {
+      return this.asignaturas;
+    }
+    return [];
+  }
+
+  getTotalHorasAsignaturas(): number {
+    return this.asignaturas.reduce((total, asignatura) => total + (asignatura.horasPresenciales || 0), 0);
+  }
+
+  getNombreProfesor(): string {
+    if (this.profesorInfo) {
+      return `${this.profesorInfo.nombres} ${this.profesorInfo.apellidos}`;
+    }
+    return 'Cargando...';
+  }
+
+  getNombreDirector(): string {
+    if (this.directorInfo) {
+      return `${this.directorInfo.nombres} ${this.directorInfo.apellidos}`;
+    }
+    return this.planDeTrabajo?.idDirector || 'No asignado';
+  }
+
+  getNombreDecano(): string {
+    if (this.decanoInfo) {
+      return `${this.decanoInfo.nombres} ${this.decanoInfo.apellidos}`;
+    }
+    return this.planDeTrabajo?.idDecano || 'No asignado';
+  }
+
+  getEstadoFirmaProfesor(): string {
+    if (this.planDeTrabajo?.rechazado && !this.estadoFirmas.firmaProfesor && this.planDeTrabajo?.estado === 'RECHAZADO') {
+      return 'Rechazado';
+    }
+    return this.estadoFirmas.firmaProfesor ? 'Firmado' : 'Pendiente';
+  }
+
+  getEstadoFirmaDirector(): string {
+    return this.estadoFirmas.firmaDirector ? 'Firmado' : 'Pendiente';
+  }
+
+  getEstadoFirmaDecano(): string {
+    if (this.planDeTrabajo?.rechazado && !this.estadoFirmas.firmaDecano && this.planDeTrabajo?.estado === 'Rechazado por Decanatura') {
+      return 'Rechazado';
+    }
+    return this.estadoFirmas.firmaDecano ? 'Firmado' : 'Pendiente';
+  }
+
+  getSeveridadFirmaProfesor(): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
+    if (this.planDeTrabajo?.rechazado && this.planDeTrabajo?.estado === 'RECHAZADO') {
+      return 'danger';
+    }
+    return this.estadoFirmas.firmaProfesor ? 'success' : 'warn';
+  }
+
+  getSeveridadFirmaDirector(): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
+    return this.estadoFirmas.firmaDirector ? 'success' : 'warn';
+  }
+
+  getSeveridadFirmaDecano(): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
+    if (this.planDeTrabajo?.rechazado && this.planDeTrabajo?.estado === 'Rechazado por Decanatura') {
+      return 'danger';
+    }
+    return this.estadoFirmas.firmaDecano ? 'success' : 'warn';
+  }
+
+  getEstadoPlan(): 'completo' | 'incompleto' | 'vacio' {
+    if (this.totalHorasAsignadas === 0) return 'vacio';
+    if (this.totalHorasAsignadas === this.totalHorasDisponibles) return 'completo';
+    return 'incompleto';
+  }
+
+  getSeveridadEstado(): 'success' | 'warn' | 'danger' {
+    const estado = this.getEstadoPlan();
+    switch (estado) {
+      case 'completo': return 'success';
+      case 'incompleto': return 'warn';
+      case 'vacio': return 'danger';
+      default: return 'danger';
+    }
+  }
+
+  getTextoEstado(): string {
+    const estado = this.getEstadoPlan();
+    switch (estado) {
+      case 'completo': return 'Completo';
+      case 'incompleto': return 'En progreso';
+      case 'vacio': return 'Sin asignar';
+      default: return 'Desconocido';
+    }
+  }
+
+  obtenerSeccionesInvestigativas(): SeccionHijo[] {
+    const seccionesInvestigativas: SeccionHijo[] = [];
+
+    this.seccionesPadres.forEach(seccionPadre => {
+      seccionPadre.hijos.forEach(hijo => {
+        if (hijo.seccionInvestigativa) {
+          seccionesInvestigativas.push(hijo);
+        }
+      });
+    });
+
+    return seccionesInvestigativas;
+  }
+
+  getInvestigacionesPorSeccion(seccionHijo: SeccionHijo): Investigaciones[] {
+    return this.investigacionesPorSeccion.get(seccionHijo.id) || [];
+  }
+
+  getTotalHorasInvestigacionSeccion(seccionHijo: SeccionHijo): number {
+    const investigaciones = this.getInvestigacionesPorSeccion(seccionHijo);
+    return investigaciones.reduce((total, inv) => total + (inv.horas || 0), 0);
+  }
+
+  puedeRevisar(): boolean {
+    return this.totalHorasAsignadas > 0;
+  }
+
+  tieneSeccionesHijasVisibles(seccionPadre: SeccionPadre): boolean {
+    return seccionPadre.hijos.some(hijo => this.tieneContenidoSeccionHijo(hijo));
+  }
+
+  tieneContenidoSeccionHijo(seccionHijo: SeccionHijo): boolean {
+    const esRolConAccesoCompleto = ['DECANO', 'PROFESOR'].includes(this.rolUsuario);
+    if (esRolConAccesoCompleto && !this.modoResumido) {
+      return true;
+    }
+    return this.getTotalHorasSeccion(seccionHijo) > 0;
+  }
+
+  getHorasAsignadasActividad(actividadId: string): number | null {
+    const actividadAsignada = this.actividadesPlanDeTrabajo.find(
+      a => a.actividades?.id === actividadId
+    );
+    return actividadAsignada ? actividadAsignada.horas : null;
+  }
+
+  getDescripcionActividad(actividadId: string): string | null {
+    const actividadAsignada = this.actividadesPlanDeTrabajo.find(
+      a => a.actividades?.id === actividadId
+    );
+    return actividadAsignada ? actividadAsignada.descripcion : null;
+  }
+
+  getAsesoriasActividad(actividadId: string): any[] {
+    const actividadAsignada = this.actividadesPlanDeTrabajo.find(
+      a => a.actividades?.id === actividadId
+    );
+    return actividadAsignada?.asesorias || [];
+  }
+
+  getSeccionesHijasConContenido(seccionPadre: SeccionPadre): SeccionHijo[] {
+    return seccionPadre.hijos.filter(hijo => this.tieneContenidoSeccionHijo(hijo));
+  }
+
+  tieneAsesorias(actividadId: string): boolean {
+    const asesorias = this.getAsesoriasActividad(actividadId);
+    return Array.isArray(asesorias) && asesorias.length > 0;
+  }
+
+  tieneSeccionesVisibles(): boolean {
+    const esRolConAccesoCompleto = ['DECANO', 'PROFESOR'].includes(this.rolUsuario);
+    if (esRolConAccesoCompleto && !this.modoResumido) {
+      return true;
+    }
+    return this.seccionesPadres.some(padre => this.tieneSeccionesHijasVisibles(padre));
+  }
+
+  obtenerProductosTexto(productos: any[]): string {
+    if (!productos || productos.length === 0) {
+      return 'Sin productos';
+    }
+    return productos.map(p => p.nombre + ' (' + (p.tipoProducto?.nombre || 'Sin tipo') + ')').join(', ');
+  }
+
+  obtenerNombresProductos(productos: any[]): string[] {
+    if (!productos || productos.length === 0) {
+      return [];
+    }
+    const nombres = productos
+      .map(p => p.nombre)
+      .filter(nombre => nombre);
+    return nombres.length > 0 ? nombres : [];
+  }
+
+  obtenerTiposProductosTexto(productos: any[]): string {
+    if (!productos || productos.length === 0) {
+      return 'Sin tipos de productos';
+    }
+    const tipos = productos
+      .map(p => p.tipoProducto?.nombre)
+      .filter((tipo, index, self) => tipo && self.indexOf(tipo) === index);
+    return tipos.length > 0 ? tipos.join(', ') : 'Sin tipo';
+  }
+
+  getTipoContenidoSeccion(seccionHijo: SeccionHijo): string {
+    if (seccionHijo.seccionCursos) return 'asignaturas';
+    if (seccionHijo.seccionInvestigativa) return 'investigacion';
+    return 'actividades';
+  }
+
+  getNombreActividad(actividad: ActividadPlanDeTrabajo): string {
+    const nombre = actividad.actividades?.nombre || '';
+    return nombre.trim().length > 1 ? nombre : 'TOTAL';
+  }
+
+  puedeVerMotivoRechazoProfesor(): boolean {
+    const estaRechazado = this.planDeTrabajo?.rechazado === true;
+    const tieneMotivo = !!this.planDeTrabajo?.motivoRechazo?.trim();
+    const profesorRechazo = this.planDeTrabajo?.estado === 'RECHAZADO';
+    return estaRechazado && tieneMotivo && profesorRechazo;
+  }
+
+  puedeVerMotivoRechazoDirector(): boolean {
+    const estaRechazado = this.planDeTrabajo?.rechazado === true;
+    const tieneMotivo = !!this.planDeTrabajo?.motivoRechazo?.trim();
+    const profesorRechazo = this.planDeTrabajo?.estado === 'RECHAZADO';
+    const decanoRechazo = this.planDeTrabajo?.estado === 'Rechazado por Decanatura' || !this.estadoFirmas.firmaDecano;
+    const directorRechazo = !this.estadoFirmas.firmaDirector && estaRechazado;
+    return estaRechazado && tieneMotivo && directorRechazo && !profesorRechazo && !decanoRechazo;
+  }
+
+  puedeVerMotivoRechazoDecano(): boolean {
+    const estaRechazado = this.planDeTrabajo?.rechazado === true;
+    const tieneMotivo = !!this.planDeTrabajo?.motivoRechazo?.trim();
+    const decanoRechazo = this.planDeTrabajo?.estado === 'Rechazado por Decanatura' || (!this.estadoFirmas.firmaDecano && estaRechazado);
+    const profesorRechazo = this.planDeTrabajo?.estado === 'RECHAZADO';
+    return estaRechazado && tieneMotivo && decanoRechazo && !profesorRechazo;
+  }
+
+  mostrarMotivoRechazo(): void {
+    if (this.puedeVerMotivoRechazoProfesor() || this.puedeVerMotivoRechazoDirector() || this.puedeVerMotivoRechazoDecano()) {
+      this.mostrarModalMotivoRechazo = true;
+    }
+  }
+
+  cerrarModalMotivoRechazo(): void {
+    this.mostrarModalMotivoRechazo = false;
+  }
+
+  getQuienRechazo(): string {
+    if (this.puedeVerMotivoRechazoProfesor()) return 'Profesor';
+    if (this.puedeVerMotivoRechazoDirector()) return 'Director';
+    if (this.puedeVerMotivoRechazoDecano()) return 'Decano';
+    return '';
+  }
+
+  getNombreQuienRechazo(): string {
+    if (this.puedeVerMotivoRechazoProfesor()) return this.getNombreProfesor();
+    if (this.puedeVerMotivoRechazoDirector()) return this.getNombreDirector();
+    if (this.puedeVerMotivoRechazoDecano()) return this.getNombreDecano();
+    return 'No especificado';
+  }
+  @Output() estadoCambiado = new EventEmitter<string>();
+
+  marcarComoRevisado(): void {
+    if (!this.planDeTrabajoId) return;
+
+    this.planDeTrabajoService.updateFirmas(this.planDeTrabajoId, { estado: 'REVISADO' }).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Plan revisado',
+          detail: 'El estado del plan ha sido actualizado a REVISADO'
+        });
+        if (this.planDeTrabajo) {
+          this.planDeTrabajo.estado = 'REVISADO';
+        }
+        this.cargarEstadoFirmas();
+        this.estadoCambiado.emit('Revisado');
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se pudo actualizar el estado del plan'
+        });
+      }
+    });
+  }
+
+  cambiosHoras: { [id: string]: number } = {};
+  idActividadEditando: string | null = null;
+  mostrarModalProductos = false;
+  productosSeleccionados: any[] = [];
+
+  onHorasChange(id: string, horas: number): void {
+    if (horas < 0) return;
+
+    let horasOriginales: number | null = this.getHorasAsignadasActividad(id);
+
+    if (horasOriginales === null) {
+      for (const [seccionId, inversiones] of this.investigacionesPorSeccion) {
+        const inv = inversiones.find(i => i.id === id);
+        if (inv) {
+          horasOriginales = inv.horas;
+          break;
+        }
+      }
+    }
+
+    if (horasOriginales !== null && horas === horasOriginales) {
+      delete this.cambiosHoras[id];
+      this.idActividadEditando = null;
+    } else if (horasOriginales === null && (horas === 0 || horas === null)) {
+      delete this.cambiosHoras[id];
+      this.idActividadEditando = null;
+    } else {
+      this.cambiosHoras[id] = horas;
+      this.idActividadEditando = id;
+    }
+  }
+
+  isInputDisabled(id: string): boolean {
+    if (this.rolUsuario !== 'DECANO') return true;
+    if (this.planDeTrabajo?.estado !== 'Activo') return true;
+    if (this.planDeTrabajo?.firmaDecano === true) return true;
+    if (this.getHorasAsignadasActividad(id) === null || this.getHorasAsignadasActividad(id) === 0) return true;
+    return false;
+  }
+
+  isInputDisabledInv(): boolean {
+    if (this.rolUsuario !== 'DECANO') return true;
+    if (this.planDeTrabajo?.estado !== 'Activo') return true;
+    if (this.planDeTrabajo?.firmaDecano === true) return true;
+    if (this.modoResumido) return true;
+    return false;
+  }
+  setMinHoras(id: string): number {
+    if (this.getTotalHorasSolicitadas() < 0) {
+      return this.getHorasAsignadasActividad(id) || 0;
+    }
+    return 0;
+  }
+
+  setMaxHoras(id: string): number {
+
+    if (this.hayCambiosConfirmados(id)) {
+      const horasActuales = this.getHorasAsignadasActividad(id);
+      return horasActuales !== null ? horasActuales : 0;
+    }
+
+    if (this.idActividadEditando === id) {
+      return 40;
+    }
+
+    if (this.cambiosHoras.hasOwnProperty(id)) {
+      return 40;
+    }
+
+    return 40;
+  }
+
+  setMinInvestigacion(id: string): number {
+    if (this.getTotalHorasSolicitadas() < 0) {
+      let horasOriginales = 0;
+      for (const [_, inversiones] of this.investigacionesPorSeccion) {
+        const inv = inversiones.find(i => i.id === id);
+        if (inv) {
+          horasOriginales = inv.horas;
+          break;
+        }
+      }
+      return horasOriginales;
+    }
+    return 0;
+  }
+
+  setMaxInvestigacion(id: string): number {
+    let horasOriginales = 0;
+    for (const [_, inversiones] of this.investigacionesPorSeccion) {
+      const inv = inversiones.find(i => i.id === id);
+      if (inv) {
+        horasOriginales = inv.horas;
+        break;
+      }
+    }
+    return horasOriginales;
+  }
+
+  esInvestigacion(id: string): boolean {
+    for (const [_, inversiones] of this.investigacionesPorSeccion) {
+      if (inversiones.some(i => i.id === id)) {
+        return true;
+      }
+    }
+    return false;
+
+  }
+
+  hayCambiosConfirmados(idActual: string): boolean {
+    return Object.keys(this.cambiosHoras).some(id => id !== idActual);
+  }
+
+
+  hasCambios(): boolean {
+    return Object.keys(this.cambiosHoras).length > 0;
+  }
+
+  getTotalHorasSolicitadas(): number {
+    const entries = Object.entries(this.cambiosHoras);
+    let total = 0;
+
+    for (const [id, horasNuevas] of entries) {
+      let horasOriginales: number | null = this.getHorasAsignadasActividad(id);
+
+      if (horasOriginales === null) {
+        for (const [seccionId, inversiones] of this.investigacionesPorSeccion) {
+          const inv = inversiones.find(i => i.id === id);
+          if (inv) {
+            horasOriginales = inv.horas;
+            break;
+          }
+        }
+      }
+
+      if (horasOriginales !== null) {
+        total += (horasNuevas - horasOriginales);
+      }
+    }
+
+    return total;
+  }
+
+  solicitarCambioVicerrectoria(): void {
+    if (!this.planDeTrabajoId) return;
+    const entries = Object.entries(this.cambiosHoras);
+    if (entries.length === 0) return;
+
+    const totalSolicitado = this.getTotalHorasSolicitadas();
+
+    if (totalSolicitado !== 0) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error de validación',
+        detail: 'Las horas extra solicitadas deben ser compensadas reduciendo horas en otras actividades.'
+      });
+      return;
+    }
+
+    this.descripcionCambio = '';
+    this.mostrarModalConfirmacionCambio = true;
+  }
+
+  confirmarEnvioVicerrectoria(): void {
+    if (!this.descripcionCambio.trim()) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Campo requerido',
+        detail: 'Debe ingresar una descripción del cambio.'
+      });
+      return;
+    }
+
+    const entries = Object.entries(this.cambiosHoras);
+    const actividadesAumento: string[] = [];
+    const actividadesDisminucion: string[] = [];
+
+    for (const [id, horasNuevas] of entries) {
+      let horasOriginales: number | null = this.getHorasAsignadasActividad(id);
+
+      if (horasOriginales === null) {
+        for (const [seccionId, inversiones] of this.investigacionesPorSeccion) {
+          const inv = inversiones.find(i => i.id === id);
+          if (inv) {
+            horasOriginales = inv.horas;
+            break;
+          }
+        }
+      }
+
+      if (horasOriginales !== null) {
+        if (horasNuevas > horasOriginales) {
+          if (this.esInvestigacion(id)) {
+            actividadesAumento.push(`I${id} ${horasNuevas}`);
+          } else {
+            actividadesAumento.push(`${id} ${horasNuevas}`);
+          }
+        } else if (horasNuevas < horasOriginales) {
+          let NhorasNuevas;
+          if (horasNuevas === null) NhorasNuevas = 0;
+          else NhorasNuevas = horasNuevas;
+          if (this.esInvestigacion(id)) {
+            actividadesDisminucion.push(`I${id} ${NhorasNuevas}`);
+          } else {
+            actividadesDisminucion.push(`${id} ${NhorasNuevas}`);
+          }
+        }
+      }
+    }
+
+    const motivoRechazo = `${this.descripcionCambio.trim()} | ${actividadesAumento.join(' | ')} | ${actividadesDisminucion.join(' | ')}`;
+
+    this.planDeTrabajoService.updateFirmas(this.planDeTrabajoId, {
+      estado: 'Solicitud enviada a Vicerrectoría',
+      motivoRechazo: motivoRechazo
+    }).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Solicitud enviada',
+          detail: 'Se ha solicitado el cambio de horas a Vicerrectoría.'
+        });
+
+        // Enviar notificación a vicerrectoría
+        this.enviarNotificacionVicerrectoria();
+
+        if (this.planDeTrabajo) {
+          this.planDeTrabajo.estado = 'Solicitud enviada a Vicerrectoría';
+          this.planDeTrabajo.motivoRechazo = motivoRechazo;
+        }
+        this.estadoCambiado.emit('Solicitud enviada a Vicerrectoría');
+        this.cambiosHoras = {};
+        this.idActividadEditando = null;
+        this.mostrarModalConfirmacionCambio = false;
+        this.descripcionCambio = '';
+      },
+      error: (err) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se pudo enviar la solicitud.'
+        });
+      }
+    });
+
+  }
+
+  cancelarEnvioVicerrectoria(): void {
+    this.mostrarModalConfirmacionCambio = false;
+    this.descripcionCambio = '';
+  }
+
+  private enviarNotificacionVicerrectoria(): void {
+    if (!this.decanoInfo || !this.planDeTrabajo || !this.profesorInfo) {
+      return;
+    }
+
+
+
+    this.notificacionesService.notificarEnvioVicerrectoria({
+      emailDecano: this.decanoInfo.numIdentificacion,
+      nombreDecano: `${this.decanoInfo.nombres} ${this.decanoInfo.apellidos}`,
+      programa: this.planDeTrabajo.idPrograma || this.profesorInfo.programa,
+      periodo: this.planDeTrabajo.periodo.toString(),
+      anio: this.planDeTrabajo.anio.toString(),
+      cantidadPlanes: 1
+    }).subscribe({
+      next: (response) => {},
+      error: (err) =>{}
+    });
+  }
+
+
+  mostrarDetalleProductos(productos: any[]): void {
+    this.productosSeleccionados = productos || [];
+    this.mostrarModalProductos = true;
+  }
+
+  cerrarModalProductos(): void {
+    this.mostrarModalProductos = false;
+    this.productosSeleccionados = [];
+  }
+}

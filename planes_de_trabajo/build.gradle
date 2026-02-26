@@ -1,0 +1,115 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.5.4'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.unimar'
+version = '0.0.1-SNAPSHOT'
+description = 'Servicios de software planes de trabajo'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+ext {
+	set('springCloudVersion', "2025.0.0")
+}
+
+// Cargar variables de entorno desde archivo .env
+def loadEnvFile() {
+	def envFile = file('../.env')
+	if (envFile.exists()) {
+		envFile.readLines().each { line ->
+			if (line.contains('=') && !line.startsWith('#') && line.trim() != '') {
+				def parts = line.split('=', 2)
+				if (parts.length == 2) {
+					def key = parts[0].trim()
+					def value = parts[1].trim()
+					
+					// Establecer como propiedad del sistema
+					System.setProperty(key, value)
+				}
+			}
+		}
+		println "✅ Variables de entorno cargadas desde .env"
+	} else {
+		println "⚠️  Archivo .env no encontrado en la raíz del proyecto"
+	}
+}
+
+// Cargar variables antes de cualquier tarea
+gradle.projectsEvaluated {
+	loadEnvFile()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13'
+	implementation 'org.springframework.cloud:spring-cloud-starter-consul-config'
+	implementation 'org.springframework.cloud:spring-cloud-starter-consul-discovery'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	
+	// RabbitMQ - Bus de eventos para tiempo real
+	implementation 'org.springframework.boot:spring-boot-starter-amqp'
+	
+	// Apache POI for Excel generation
+	implementation 'org.apache.poi:poi-ooxml:5.2.5'
+	
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	runtimeOnly 'org.postgresql:postgresql'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	compileOnly 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+    testCompileOnly 'org.projectlombok:lombok:1.18.34'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+// Configurar bootRun para usar las variables de entorno del .env
+bootRun {
+	// Cargar variables del .env como variables de entorno
+	def envFile = file('../.env')
+	if (envFile.exists()) {
+		envFile.readLines().each { line ->
+			if (line.contains('=') && !line.startsWith('#') && line.trim() != '') {
+				def parts = line.split('=', 2)
+				if (parts.length == 2) {
+					def key = parts[0].trim()
+					def value = parts[1].trim()
+					// Establecer como variable de entorno para la aplicación
+					environment key, value
+					// Establecer específicamente el puerto del servidor como propiedad del sistema
+					if (key == 'PLANES_TRABAJO_PORT') {
+						systemProperty 'server.port', value
+					}
+				}
+			}
+		}
+		println "✅ Variables de entorno aplicadas para bootRun"
+	}
+	
+	// Solo agregar propiedades del sistema que no interfieran con las variables de entorno
+	systemProperties System.properties.findAll { key, value -> 
+		!key.toString().startsWith('spring.') && 
+		!key.toString().startsWith('server.') &&
+		!key.toString().startsWith('DB_')
+	}
+}

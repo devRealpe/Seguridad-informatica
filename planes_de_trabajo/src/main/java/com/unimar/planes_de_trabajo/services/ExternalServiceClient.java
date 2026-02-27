@@ -24,13 +24,13 @@ public class ExternalServiceClient {
 
     private final RestTemplate restTemplate;
     private final DiscoveryClient discoveryClient;
-    
+
     @Value("${AUTH_SERVICE_URL}")
     private String authServiceFallback;
-    
+
     @Value("${GENERAL_MONGODB_URL}")
     private String generalMongoFallback;
-    
+
     @Value("${SMTP_SERVICE_URL}")
     private String smtpServiceFallback;
 
@@ -84,41 +84,42 @@ public class ExternalServiceClient {
     /**
      * Envía un correo electrónico directamente al servicio SMTP con plantilla HTML
      */
-    public boolean sendEmailWithTemplate(String to, String subject, String templateType, Map<String, String> templateVariables) {
+    public boolean sendEmailWithTemplate(String to, String subject, String templateType,
+            Map<String, String> templateVariables) {
         try {
             String url = getSmtpServiceUrl() + "/smtp/api/email/send-template";
-            
+
             log.info("📧 Enviando correo a: {} con plantilla: {}", to, templateType);
             log.info("📤 URL SMTP: {}", url);
-            
+
             Map<String, Object> emailRequest = new HashMap<>();
             emailRequest.put("to", to);
             emailRequest.put("subject", subject);
             emailRequest.put("templateType", templateType);
             emailRequest.put("project", "planes_de_trabajo");
             emailRequest.put("templateVariables", templateVariables);
-            
+
             log.info("📋 Variables de plantilla: {}", templateVariables);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(emailRequest, headers);
-            
+
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                request,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
-            
+                    url,
+                    HttpMethod.POST,
+                    request,
+                    new ParameterizedTypeReference<Map<String, Object>>() {
+                    });
+
             if (response.getStatusCode().is2xxSuccessful()) {
                 log.info("✅ Correo enviado correctamente a: {}", to);
                 return true;
             }
-            
+
             log.warn("⚠️ Respuesta inesperada al enviar correo: {}", response.getStatusCode());
             return false;
-            
+
         } catch (Exception e) {
             log.error("❌ Error al enviar correo: {}", e.getMessage(), e);
             return false;
@@ -131,14 +132,19 @@ public class ExternalServiceClient {
     public static class UserData {
         private final String email;
         private final String nombreCompleto;
-        
+
         public UserData(String email, String nombreCompleto) {
             this.email = email;
             this.nombreCompleto = nombreCompleto;
         }
-        
-        public String getEmail() { return email; }
-        public String getNombreCompleto() { return nombreCompleto; }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public String getNombreCompleto() {
+            return nombreCompleto;
+        }
     }
 
     /**
@@ -146,17 +152,17 @@ public class ExternalServiceClient {
      */
     public UserData getUserDataByIdentificacion(String identificacion, String programa) {
         try {
-            String url = getAuthServiceUrl() + "/api/auth/users/identificacion/" + identificacion 
-                        + "?programa=" + programa;
-            
+            String url = getAuthServiceUrl() + "/api/auth/users/identificacion/" + identificacion
+                    + "?programa=" + programa;
+
             log.debug("Obteniendo datos de usuario para identificación: {} del programa: {}", identificacion, programa);
-            
+
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<Map<String, Object>>() {
+                    });
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> userData = response.getBody();
@@ -164,18 +170,18 @@ public class ExternalServiceClient {
                 String firstName = userData.containsKey("firstName") ? (String) userData.get("firstName") : "";
                 String lastName = userData.containsKey("lastName") ? (String) userData.get("lastName") : "";
                 String nombreCompleto = (firstName + " " + lastName).trim();
-                
+
                 if (nombreCompleto.isEmpty()) {
                     nombreCompleto = email; // Fallback al email si no hay nombre
                 }
-                
+
                 log.debug("Usuario encontrado: email={}, nombre={}", email, nombreCompleto);
                 return new UserData(email, nombreCompleto);
             }
-            
+
             log.warn("No se encontró usuario para identificación: {}", identificacion);
             return null;
-            
+
         } catch (Exception e) {
             log.error("Error al obtener datos de usuario desde auth service: {}", e.getMessage());
             return null;
@@ -196,29 +202,29 @@ public class ExternalServiceClient {
     public boolean sendNotification(Map<String, Object> notification) {
         try {
             String url = getGeneralMongoServiceUrl() + "/api/notifications";
-            
-            log.debug("Enviando notificación a: {} - Tipo: {}", 
-                notification.get("userId"), notification.get("type"));
-            
+
+            log.debug("Enviando notificación a: {} - Tipo: {}",
+                    notification.get("userId"), notification.get("type"));
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(notification, headers);
-            
+
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                request,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
-            
+                    url,
+                    HttpMethod.POST,
+                    request,
+                    new ParameterizedTypeReference<Map<String, Object>>() {
+                    });
+
             if (response.getStatusCode().is2xxSuccessful()) {
                 log.info("Notificación enviada correctamente");
                 return true;
             }
-            
+
             log.warn("Respuesta inesperada al enviar notificación: {}", response.getStatusCode());
             return false;
-            
+
         } catch (Exception e) {
             log.error("Error al enviar notificación: {}", e.getMessage());
             return false;
@@ -228,7 +234,8 @@ public class ExternalServiceClient {
     /**
      * Envía notificación de aprobación de plan al profesor
      */
-    public void notificarAprobacionDirector(String profesorEmail, String nombreProfesor, String programa, String periodo, String anio, String nombreDecano) {
+    public void notificarAprobacionDirector(String profesorEmail, String nombreProfesor, String programa,
+            String periodo, String anio, String nombreDecano) {
         // 1. Crear notificación en MongoDB (para el sistema de notificaciones)
         Map<String, Object> notification = new HashMap<>();
         notification.put("userId", profesorEmail);
@@ -237,13 +244,12 @@ public class ExternalServiceClient {
         notification.put("priority", "HIGH");
         notification.put("title", "Plan de Trabajo Aprobado");
         notification.put("message", String.format(
-            "Su Plan de Trabajo del periodo %s año %s ha sido aprobado por el director de programa %s.", 
-            periodo, anio, programa
-        ));
+                "Su Plan de Trabajo del periodo %s año %s ha sido aprobado por el director de programa %s.",
+                periodo, anio, programa));
         notification.put("link", "/app/inicio");
         notification.put("sendEmail", false); // El correo lo enviamos directamente
         sendNotification(notification);
-        
+
         // 2. Enviar correo directamente al SMTP con plantilla HTML
         Map<String, String> templateVariables = new HashMap<>();
         templateVariables.put("nombreProfesor", nombreProfesor != null ? nombreProfesor : profesorEmail);
@@ -253,20 +259,22 @@ public class ExternalServiceClient {
         templateVariables.put("nombreDecano", nombreDecano != null ? nombreDecano : "Director del Programa");
         // Variables para template default (fallback)
         templateVariables.put("titulo", "Plan de Trabajo Aprobado");
-        templateVariables.put("mensaje", String.format("Su Plan de Trabajo del periodo %s año %s ha sido aprobado por %s del programa %s.", periodo, anio, nombreDecano != null ? nombreDecano : "Director del Programa", programa));
-        
+        templateVariables.put("mensaje",
+                String.format("Su Plan de Trabajo del periodo %s año %s ha sido aprobado por %s del programa %s.",
+                        periodo, anio, nombreDecano != null ? nombreDecano : "Director del Programa", programa));
+
         sendEmailWithTemplate(
-            profesorEmail,
-            "Plan de Trabajo Aprobado - " + programa,
-            "aprobado_decano",  // Plantilla para notificar al profesor que fue aprobado
-            templateVariables
-        );
+                profesorEmail,
+                "Plan de Trabajo Aprobado - " + programa,
+                "aprobado_decano", // Plantilla para notificar al profesor que fue aprobado
+                templateVariables);
     }
 
     /**
      * Envía notificación de rechazo de plan al profesor
      */
-    public void notificarRechazo(String profesorEmail, String nombreProfesor, String programa, String periodo, String anio, String motivo, String rechazadoPor) {
+    public void notificarRechazo(String profesorEmail, String nombreProfesor, String programa, String periodo,
+            String anio, String motivo, String rechazadoPor) {
         // 1. Crear notificación en MongoDB
         Map<String, Object> notification = new HashMap<>();
         notification.put("userId", profesorEmail);
@@ -275,13 +283,12 @@ public class ExternalServiceClient {
         notification.put("priority", "HIGH");
         notification.put("title", "Plan de Trabajo Rechazado");
         notification.put("message", String.format(
-            "Su Plan de Trabajo del periodo %s año %s ha sido rechazado. Motivo: %s", 
-            periodo, anio, motivo
-        ));
+                "Su Plan de Trabajo del periodo %s año %s ha sido rechazado. Motivo: %s",
+                periodo, anio, motivo));
         notification.put("link", "/app/inicio");
         notification.put("sendEmail", false);
         sendNotification(notification);
-        
+
         // 2. Enviar correo directamente al SMTP
         Map<String, String> templateVariables = new HashMap<>();
         templateVariables.put("nombreProfesor", nombreProfesor != null ? nombreProfesor : profesorEmail);
@@ -292,20 +299,21 @@ public class ExternalServiceClient {
         templateVariables.put("rechazadoPor", rechazadoPor != null ? rechazadoPor : "Director del Programa");
         // Variables para template default (fallback)
         templateVariables.put("titulo", "Plan de Trabajo Rechazado");
-        templateVariables.put("mensaje", String.format("Su Plan de Trabajo del periodo %s año %s ha sido rechazado. Motivo: %s", periodo, anio, motivo));
-        
+        templateVariables.put("mensaje", String.format(
+                "Su Plan de Trabajo del periodo %s año %s ha sido rechazado. Motivo: %s", periodo, anio, motivo));
+
         sendEmailWithTemplate(
-            profesorEmail,
-            "Plan de Trabajo Rechazado - " + programa,
-            "rechazado",
-            templateVariables
-        );
+                profesorEmail,
+                "Plan de Trabajo Rechazado - " + programa,
+                "rechazado",
+                templateVariables);
     }
 
     /**
      * Envía notificación al director cuando el profesor rechaza el plan
      */
-    public void notificarRechazoProfesor(String directorEmail, String nombreProfesor, String programa, String periodo, String anio, String motivo) {
+    public void notificarRechazoProfesor(String directorEmail, String nombreProfesor, String programa, String periodo,
+            String anio, String motivo) {
         // 1. Crear notificación en MongoDB
         Map<String, Object> notification = new HashMap<>();
         notification.put("userId", directorEmail);
@@ -314,13 +322,12 @@ public class ExternalServiceClient {
         notification.put("priority", "HIGH");
         notification.put("title", "Plan de Trabajo Rechazado por Profesor");
         notification.put("message", String.format(
-            "El profesor %s ha rechazado el Plan de Trabajo del periodo %s año %s del programa %s. Motivo: %s", 
-            nombreProfesor, periodo, anio, programa, motivo
-        ));
+                "El profesor %s ha rechazado el Plan de Trabajo del periodo %s año %s del programa %s. Motivo: %s",
+                nombreProfesor, periodo, anio, programa, motivo));
         notification.put("link", "/app/planes-de-trabajo");
         notification.put("sendEmail", false);
         sendNotification(notification);
-        
+
         // 2. Enviar correo directamente al SMTP
         Map<String, String> templateVariables = new HashMap<>();
         templateVariables.put("nombreProfesor", nombreProfesor);
@@ -330,20 +337,22 @@ public class ExternalServiceClient {
         templateVariables.put("motivo", motivo);
         // Variables para template default (fallback)
         templateVariables.put("titulo", "Plan de Trabajo Rechazado por Profesor");
-        templateVariables.put("mensaje", String.format("El profesor %s ha rechazado el Plan de Trabajo del periodo %s año %s del programa %s. Motivo: %s", nombreProfesor, periodo, anio, programa, motivo));
-        
+        templateVariables.put("mensaje", String.format(
+                "El profesor %s ha rechazado el Plan de Trabajo del periodo %s año %s del programa %s. Motivo: %s",
+                nombreProfesor, periodo, anio, programa, motivo));
+
         sendEmailWithTemplate(
-            directorEmail,
-            "Plan de Trabajo Rechazado por Profesor - " + nombreProfesor,
-            "rechazado_profesor",
-            templateVariables
-        );
+                directorEmail,
+                "Plan de Trabajo Rechazado por Profesor - " + nombreProfesor,
+                "rechazado_profesor",
+                templateVariables);
     }
 
     /**
      * Envía notificación al decano cuando el director envía el plan a decanatura
      */
-    public void notificarEnvioDecano(String decanoEmail, String nombreDirector, String programa, String periodo, String anio) {
+    public void notificarEnvioDecano(String decanoEmail, String nombreDirector, String programa, String periodo,
+            String anio) {
         // 1. Crear notificación en MongoDB
         Map<String, Object> notification = new HashMap<>();
         notification.put("userId", decanoEmail);
@@ -352,13 +361,12 @@ public class ExternalServiceClient {
         notification.put("priority", "HIGH");
         notification.put("title", "Nuevo Plan de Trabajo para Revisión");
         notification.put("message", String.format(
-            "El director %s ha enviado un Plan de Trabajo del programa %s (periodo %s año %s) para su revisión y aprobación.", 
-            nombreDirector, programa, periodo, anio
-        ));
+                "El director %s ha enviado un Plan de Trabajo del programa %s (periodo %s año %s) para su revisión y aprobación.",
+                nombreDirector, programa, periodo, anio));
         notification.put("link", "/app/planes-de-trabajo/revision");
         notification.put("sendEmail", false);
         sendNotification(notification);
-        
+
         // 2. Enviar correo directamente al SMTP
         Map<String, String> templateVariables = new HashMap<>();
         templateVariables.put("nombreDirector", nombreDirector);
@@ -368,14 +376,15 @@ public class ExternalServiceClient {
         templateVariables.put("link", "https://apps.umariana.edu.co/planes_de_trabajo/app/home");
         // Variables para template default (fallback)
         templateVariables.put("titulo", "Nuevo Plan de Trabajo para Revisión");
-        templateVariables.put("mensaje", String.format("El director %s ha enviado un Plan de Trabajo del programa %s (periodo %s año %s) para su revisión y aprobación.", nombreDirector, programa, periodo, anio));
-        
+        templateVariables.put("mensaje", String.format(
+                "El director %s ha enviado un Plan de Trabajo del programa %s (periodo %s año %s) para su revisión y aprobación.",
+                nombreDirector, programa, periodo, anio));
+
         sendEmailWithTemplate(
-            decanoEmail,
-            "Nuevo Plan de Trabajo para Revisión - " + programa,
-            "enviado_decano",
-            templateVariables
-        );
+                decanoEmail,
+                "Nuevo Plan de Trabajo para Revisión - " + programa,
+                "enviado_decano",
+                templateVariables);
     }
 
     /**
@@ -390,13 +399,12 @@ public class ExternalServiceClient {
         notification.put("priority", "HIGH");
         notification.put("title", "Plan de Trabajo Listo para Publicar");
         notification.put("message", String.format(
-            "El Plan de Trabajo del programa %s (periodo %s año %s) ha sido aprobado por el decano y está listo para ser publicado.", 
-            programa, periodo, anio
-        ));
+                "El Plan de Trabajo del programa %s (periodo %s año %s) ha sido aprobado por el decano y está listo para ser publicado.",
+                programa, periodo, anio));
         notification.put("link", "/app/planes-de-trabajo/publicar");
         notification.put("sendEmail", false);
         sendNotification(notification);
-        
+
         // 2. Enviar correo directamente al SMTP
         Map<String, String> templateVariables = new HashMap<>();
         templateVariables.put("programa", programa);
@@ -405,14 +413,54 @@ public class ExternalServiceClient {
         templateVariables.put("link", "https://apps.umariana.edu.co/planes_de_trabajo/app/home");
         // Variables para template default (fallback)
         templateVariables.put("titulo", "Plan de Trabajo Listo para Publicar");
-        templateVariables.put("mensaje", String.format("El Plan de Trabajo del programa %s (periodo %s año %s) ha sido aprobado por el decano y está listo para ser publicado.", programa, periodo, anio));
-        
+        templateVariables.put("mensaje", String.format(
+                "El Plan de Trabajo del programa %s (periodo %s año %s) ha sido aprobado por el decano y está listo para ser publicado.",
+                programa, periodo, anio));
+
         sendEmailWithTemplate(
-            sistemasEmail,
-            "Plan de Trabajo Listo para Publicar - " + programa,
-            "aprobado_decano_sistemas",
-            templateVariables
-        );
+                sistemasEmail,
+                "Plan de Trabajo Listo para Publicar - " + programa,
+                "aprobado_decano_sistemas",
+                templateVariables);
+    }
+
+    /**
+     * Envía notificación a planeación cuando el decano envía los planes para
+     * revisión
+     */
+    public void notificarEnvioPlaneacion(String planeacionEmail, String decanoNombre,
+            String programa, String periodo, String anio) {
+        // 1. Crear notificación en MongoDB
+        Map<String, Object> notification = new HashMap<>();
+        notification.put("userId", planeacionEmail);
+        notification.put("projectContext", "planes_de_trabajo");
+        notification.put("type", "PLAN_ENVIADO_PLANEACION");
+        notification.put("priority", "HIGH");
+        notification.put("title", "Planes de Trabajo Enviados a Planeación");
+        notification.put("message", String.format(
+                "El decano ha enviado el Plan de Trabajo del programa %s (periodo %s año %s) para revisión de planeación.",
+                programa, periodo, anio));
+        notification.put("link", "/app/planes-de-trabajo/planeacion");
+        notification.put("sendEmail", false);
+        sendNotification(notification);
+
+        // 2. Enviar correo directamente al SMTP
+        Map<String, String> templateVariables = new HashMap<>();
+        templateVariables.put("decanoNombre", decanoNombre);
+        templateVariables.put("programa", programa);
+        templateVariables.put("periodo", periodo);
+        templateVariables.put("anio", anio);
+        templateVariables.put("link", "https://apps.umariana.edu.co/planes_de_trabajo/app/home");
+        templateVariables.put("titulo", "Planes de Trabajo Enviados a Planeación");
+        templateVariables.put("mensaje", String.format(
+                "El decano %s ha enviado el Plan de Trabajo del programa %s (periodo %s año %s) para su revisión.",
+                decanoNombre, programa, periodo, anio));
+
+        sendEmailWithTemplate(
+                planeacionEmail,
+                "Planes de Trabajo para Revisión - " + programa,
+                "enviado_planeacion",
+                templateVariables);
     }
 
     /**
@@ -421,15 +469,15 @@ public class ExternalServiceClient {
     public String getDirectorEmailByPrograma(String programa) {
         try {
             String url = getAuthServiceUrl() + "/api/auth/users/director?programa=" + programa;
-            
+
             log.debug("Obteniendo email del director para programa: {}", programa);
-            
+
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<Map<String, Object>>() {
+                    });
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> userData = response.getBody();
@@ -439,10 +487,10 @@ public class ExternalServiceClient {
                     return email;
                 }
             }
-            
+
             log.warn("No se encontró email del director para programa: {}", programa);
             return null;
-            
+
         } catch (Exception e) {
             log.error("Error al obtener email del director: {}", e.getMessage());
             return null;
@@ -455,15 +503,15 @@ public class ExternalServiceClient {
     public String getDecanoEmailByFacultad(String facultad) {
         try {
             String url = getAuthServiceUrl() + "/api/auth/users/decano?facultad=" + facultad;
-            
+
             log.debug("Obteniendo email del decano para facultad: {}", facultad);
-            
+
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<Map<String, Object>>() {
+                    });
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> userData = response.getBody();
@@ -473,10 +521,10 @@ public class ExternalServiceClient {
                     return email;
                 }
             }
-            
+
             log.warn("No se encontró email del decano para facultad: {}", facultad);
             return null;
-            
+
         } catch (Exception e) {
             log.error("Error al obtener email del decano: {}", e.getMessage());
             return null;
@@ -489,24 +537,26 @@ public class ExternalServiceClient {
     public String getSistemasEmail() {
         try {
             // Primero intentar obtener el email del usuario "sistemas" por identificación
-            // Puedes configurar la identificación real del usuario de sistemas en tu base de datos
+            // Puedes configurar la identificación real del usuario de sistemas en tu base
+            // de datos
             String sistemasIdentificacion = "sistemas"; // O la identificación real del usuario sistemas
-            
+
             log.debug("Obteniendo email de sistemas con identificación: {}", sistemasIdentificacion);
-            
+
             String email = getEmailByIdentificacion(sistemasIdentificacion, "Sistemas");
-            
+
             if (email != null && !email.equals(sistemasIdentificacion)) {
                 log.debug("Email sistemas encontrado: {}", email);
                 return email;
             }
-            
-            // Fallback: usar un email por defecto (deberías configurar esto en application.properties)
+
+            // Fallback: usar un email por defecto (deberías configurar esto en
+            // application.properties)
             // Por ahora retornamos el email del usuario que tiene rol de sistemas
             // En producción, crea un usuario real con identificación "sistemas"
             log.warn("No se encontró usuario sistemas, usando email por defecto");
             return "sistemas@unimar.edu.co"; // Email por defecto
-            
+
         } catch (Exception e) {
             log.error("Error al obtener email de sistemas: {}", e.getMessage());
             return "sistemas@unimar.edu.co"; // Email por defecto en caso de error

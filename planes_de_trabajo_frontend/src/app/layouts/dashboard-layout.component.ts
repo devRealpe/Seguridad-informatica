@@ -109,9 +109,20 @@ export class DashboardLayoutComponent implements OnInit {
     else if (roles.includes('PLANES_GESTION')) {
       items.unshift({ id: 'inicio', label: 'Inicio', icon: 'pi pi-home', route: 'app/inicio' });
     }
-    else if (roles.includes('PLANES_PLANEACION')) {
-      items.unshift({ id: 'inicio', label: 'Inicio', icon: 'pi pi-home', route: 'app/inicio' });
+else if (roles.includes('PLANES_PLANEACION')) {
+  items.unshift(
+    { id: 'inicio', label: 'Inicio', icon: 'pi pi-home', route: 'app/inicio' }
+  );
+
+  items.push(
+    { 
+      id: 'gestion-planes', 
+      label: 'Gestión de Planes', 
+      icon: 'pi pi-briefcase', 
+      route: 'app/gestion-planes' 
     }
+  );
+}
     else if (roles.includes('PLANES_VICERRECTORIA')) {
       items.unshift({ id: 'inicio', label: 'Inicio', icon: 'pi pi-home', route: 'app/inicio' });
     }

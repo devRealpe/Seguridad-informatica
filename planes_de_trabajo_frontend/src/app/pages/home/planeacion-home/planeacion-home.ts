@@ -24,6 +24,8 @@ import { Actividad, CrearActividad } from '../../../core/models/actividad.model'
 import { ModalCrearActividadComponent } from '../modales/modal-crear-actividad/modal-crear-actividad';
 import { ModalCrearSeccionComponent } from '../modales/modal-crear-seccion/modal-crear-seccion';
 import { DividerModule } from 'primeng/divider';
+import { TabsModule } from 'primeng/tabs';
+import { PlaneacionGestionPtComponent } from '../planeacion-gestion-pt/planeacion-gestion-pt';
 
 interface ActividadView extends Actividad {
     asesorias?: any[];
@@ -52,7 +54,9 @@ interface ActividadView extends Actividad {
         TooltipModule,
         ModalCrearActividadComponent,
         ModalCrearSeccionComponent,
-        DividerModule
+        DividerModule,
+        TabsModule,
+        PlaneacionGestionPtComponent
     ],
     providers: [MessageService]
 })
@@ -71,6 +75,7 @@ export class PlaneacionHome implements OnInit {
     esCreandoSeccionPrincipal = true;
     guardandoSeccion = false;
     private debounceTimeouts: { [key: string]: any } = {};
+    activeTabIndex = 0;
 
     constructor(
         private plantillaService: PlantillaService,

@@ -36,6 +36,14 @@ export const remoteRoutes: Route[] = [
         }
       },
 
+      // Ruta especifica para gestion de planes de trabajo, accesible solo para rol de planeación
+      {
+        path: 'gestion-planes',
+        component: PlaneacionHome,
+        canActivate: [AuthGuard],
+        data: { requiredRoles: ['PLANES_PLANEACION', 'ADMIN'] }
+      },
+
       // Rutas específicas para ADMIN con acceso libre
       {
         path: 'home-sistemas',

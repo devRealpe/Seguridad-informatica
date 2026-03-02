@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CardModule } from 'primeng/card';
@@ -47,6 +47,7 @@ type CampoFiltro = 'nombres' | 'numIdentificacion';
   templateUrl: './planeacion-gestion-pt.html',
   styleUrls: ['./planeacion-gestion-pt.scss'],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
@@ -87,14 +88,14 @@ export class PlaneacionGestionPtComponent implements OnInit, OnDestroy {
   private searchSubscription?: Subscription;
 
   // ─── Viewer ───────────────────────────────────────────────────────────────
-  showPlanViewer = false;
-  planTrabajoIdViewer = '';
-  profesorIdViewer = '';
+  showPlanViewer = signal<boolean>(false);
+  planTrabajoIdViewer = signal<string>('');
+  profesorIdViewer = signal<string>('');
 
   // ─── Confirmación envío ───────────────────────────────────────────────────
   enviandoASistemas = signal<string | null>(null);
-  showModalConfirmarEnvio = false;
-  planParaEnviar: ProfesorConPlan | null = null;
+  showModalConfirmarEnvio = signal<boolean>(false);
+  planParaEnviar = signal<ProfesorConPlan | null>(null);
 
   // ─── Opciones computed ────────────────────────────────────────────────────
   opcionesFacultades = computed(() => {
@@ -239,8 +240,8 @@ export class PlaneacionGestionPtComponent implements OnInit, OnDestroy {
 
   // ─── Filtros ──────────────────────────────────────────────────────────────
 
-  onCambioPeriodo(periodo: PeriodoAcademico): void {
-    this.periodoSeleccionado.set(periodo);
+  onCambioPeriodo(periodo: PeriodoAcademico | null): void {
+    if (!periodo) return;
     this.filtros.set({ nombres: '', numIdentificacion: '', facultad: '', programa: '' });
     this.onlyNumbers.set(true);
     this.cargarPlanes();
@@ -303,31 +304,31 @@ export class PlaneacionGestionPtComponent implements OnInit, OnDestroy {
   // ─── Acciones ─────────────────────────────────────────────────────────────
 
   onVerPlan(profesor: ProfesorConPlan): void {
-    this.planTrabajoIdViewer = profesor.planDeTrabajo.id;
-    this.profesorIdViewer = profesor.numIdentificacion;
-    this.showPlanViewer = true;
+    this.planTrabajoIdViewer.set(profesor.planDeTrabajo.id);
+    this.profesorIdViewer.set(profesor.numIdentificacion);
+    this.showPlanViewer.set(true);
   }
 
   onCerrarPlanViewer(): void {
-    this.showPlanViewer = false;
-    this.planTrabajoIdViewer = '';
-    this.profesorIdViewer = '';
+    this.showPlanViewer.set(false);
+    this.planTrabajoIdViewer.set('');
+    this.profesorIdViewer.set('');
   }
 
   onEnviarASistemasClick(profesor: ProfesorConPlan): void {
-    this.planParaEnviar = profesor;
-    this.showModalConfirmarEnvio = true;
+    this.planParaEnviar.set(profesor);
+    this.showModalConfirmarEnvio.set(true);
   }
 
   onConfirmarEnvioSistemas(): void {
-    if (!this.planParaEnviar) return;
-    this.showModalConfirmarEnvio = false;
-    this.enviarPlanASistemas(this.planParaEnviar);
+    if (!this.planParaEnviar()) return;
+    this.showModalConfirmarEnvio.set(false);
+    this.enviarPlanASistemas(this.planParaEnviar()!);
   }
 
   onCancelarEnvio(): void {
-    this.showModalConfirmarEnvio = false;
-    this.planParaEnviar = null;
+    this.showModalConfirmarEnvio.set(false);
+    this.planParaEnviar.set(null);
   }
 
   private enviarPlanASistemas(profesor: ProfesorConPlan): void {
@@ -340,7 +341,7 @@ export class PlaneacionGestionPtComponent implements OnInit, OnDestroy {
           summary: 'Enviado a Sistemas',
           detail: `El plan de ${profesor.nombres} ${profesor.apellidos} fue enviado correctamente.`,
         });
-        this.planParaEnviar = null;
+        this.planParaEnviar.set(null);
         this.cargarPlanes();
       },
       error: (err) => {
@@ -350,7 +351,7 @@ export class PlaneacionGestionPtComponent implements OnInit, OnDestroy {
           summary: 'Error',
           detail: err?.error?.message || 'No se pudo enviar el plan a Sistemas.',
         });
-        this.planParaEnviar = null;
+        this.planParaEnviar.set(null);
       },
     });
   }
@@ -409,7 +410,8 @@ export class PlaneacionGestionPtComponent implements OnInit, OnDestroy {
   }
 
   get nombreProfesorConfirmacion(): string {
-    if (!this.planParaEnviar) return '';
-    return `${this.planParaEnviar.nombres} ${this.planParaEnviar.apellidos}`;
+    const plan = this.planParaEnviar();
+    if (!plan) return '';
+    return `${plan.nombres} ${plan.apellidos}`;
   }
 }

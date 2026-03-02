@@ -24,8 +24,6 @@ import { Actividad, CrearActividad } from '../../../core/models/actividad.model'
 import { ModalCrearActividadComponent } from '../modales/modal-crear-actividad/modal-crear-actividad';
 import { ModalCrearSeccionComponent } from '../modales/modal-crear-seccion/modal-crear-seccion';
 import { DividerModule } from 'primeng/divider';
-import { TabsModule } from 'primeng/tabs';
-import { PlaneacionGestionPtComponent } from '../planeacion-gestion-pt/planeacion-gestion-pt';
 
 interface ActividadView extends Actividad {
     asesorias?: any[];
@@ -55,8 +53,6 @@ interface ActividadView extends Actividad {
         ModalCrearActividadComponent,
         ModalCrearSeccionComponent,
         DividerModule,
-        TabsModule,
-        PlaneacionGestionPtComponent
     ],
     providers: [MessageService]
 })
@@ -75,38 +71,40 @@ export class PlaneacionHome implements OnInit {
     esCreandoSeccionPrincipal = true;
     guardandoSeccion = false;
     private debounceTimeouts: { [key: string]: any } = {};
-    activeTabIndex = 0;
 
-    constructor(
-        private plantillaService: PlantillaService,
-        private seccionService: SeccionService,
-        private actividadService: ActividadService,
-        private messageService: MessageService,
-        private realtimeService: PlanTrabajoRealtimeService
-    ) {
-        effect(() => {
-            const trigger = this.realtimeService.refreshTrigger();
+constructor(
+    private plantillaService: PlantillaService,
+    private seccionService: SeccionService,
+    private actividadService: ActividadService,
+    private messageService: MessageService,
+    private realtimeService: PlanTrabajoRealtimeService
+) {
+    effect(() => {
+        const trigger = this.realtimeService.refreshTrigger();
 
-            if (trigger > 0 && this.plantillaSeleccionada) {
-                untracked(() => {
-                    
-                    const planActualizado = this.realtimeService.planActualizado();
+        // Solo actuar si hay plantilla seleccionada Y el trigger es relevante
+        if (trigger > 0) {
+            untracked(() => {
+                const planActualizado = this.realtimeService.planActualizado();
 
-                    if (planActualizado) {
-                        this.messageService.add({
-                            severity: 'info',
-                            summary: 'Actualización Detectada',
-                            detail: 'Se han realizado cambios en planes de trabajo',
-                            life: 5000
-                        });
-                        this.realtimeService.resetSignal('actualizado');
-                    }
+                if (planActualizado) {
+                    this.messageService.add({
+                        severity: 'info',
+                        summary: 'Actualización Detectada',
+                        detail: 'Se han realizado cambios en planes de trabajo',
+                        life: 5000
+                    });
+                    this.realtimeService.resetSignal('actualizado');
+                }
 
-                    this.loadPlantillas(); // Recargar plantillas por si afectan a alguna
-                });
-            }
-        });
-    }
+                // Solo recargar plantillas si hay una seleccionada
+                if (this.plantillaSeleccionada) {
+                    this.loadPlantillas();
+                }
+            });
+        }
+    });
+}
 
     ngOnInit(): void {
         this.loadPlantillas();

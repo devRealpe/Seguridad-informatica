@@ -1,4 +1,10 @@
-import { Component, AfterViewInit, ViewChild, ViewContainerRef, Type } from '@angular/core';
+import {
+  Component,
+  AfterViewInit,
+  ViewChild,
+  ViewContainerRef,
+  Type,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@microfrontends/shared-services';
 import { SistemasHomeComponent } from './sistemas-home/sistemas-home.component';
@@ -20,7 +26,7 @@ import { VicerrectoriaHome } from './vicerrectoria-home/vicerrectoria-home';
     './gestion-humana-home/gestion-humana-home.scss',
     './planeacion-home/planeacion-home.scss',
     './vicerrectoria-home/vicerrectoria-home.scss',
-    './modales/modal-crear-pt/modal-crear-pt.scss'
+    './modales/modal-crear-pt/modal-crear-pt.scss',
   ],
   standalone: true,
 })
@@ -43,26 +49,21 @@ export class Home implements AfterViewInit {
     if (userRoles.includes('ADMIN')) {
       this.router.navigate(['/app/admin']);
       return;
-    }
-    else if (userRoles.includes('PLANES_DIRECTOR')) {
+    } else if (userRoles.includes('PLANES_DIRECTOR')) {
       componentToLoad = DirectorHome;
-    }
-    else if (userRoles.includes('PLANES_GESTION')) {
-      componentToLoad = GestionHumanaHomeComponent; 
-    }
-    else if (userRoles.includes('PLANES_DECANO')) {
+    } else if (userRoles.includes('PLANES_GESTION')) {
+      componentToLoad = GestionHumanaHomeComponent;
+    } else if (userRoles.includes('PLANES_DECANO')) {
       componentToLoad = DecanoHome;
-    }
-    else if (userRoles.includes('PLANES_PLANEACION')) {
-      componentToLoad = PlaneacionHome; 
-    }
-    else if (userRoles.includes('PLANES_VICERRECTORIA')) {
-      componentToLoad = VicerrectoriaHome; 
-    }
-    else if (userRoles.includes('PLANES_SISTEMAS')) {
+    } else if (userRoles.includes('PLANES_PLANEACION')) {
+      componentToLoad = PlaneacionHome;
+    } else if (userRoles.includes('PLANES_PLANEACION')) {
+      componentToLoad = PlaneacionHome;
+    } else if (userRoles.includes('PLANES_VICERRECTORIA')) {
+      componentToLoad = VicerrectoriaHome;
+    } else if (userRoles.includes('PLANES_SISTEMAS')) {
       componentToLoad = SistemasHomeComponent;
-    }
-    else if (userRoles.includes('USUARIO')) {
+    } else if (userRoles.includes('USUARIO')) {
       componentToLoad = ProfesorHome;
     }
 

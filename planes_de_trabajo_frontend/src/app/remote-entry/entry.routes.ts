@@ -16,6 +16,7 @@ import { GestionHumanaHomeComponent } from '../pages/home/gestion-humana-home/ge
 import { PlaneacionHome } from '../pages/home/planeacion-home/planeacion-home';
 import { VicerrectoriaHome } from '../pages/home/vicerrectoria-home/vicerrectoria-home';
 import { AdminHomeComponent } from '../pages/home/admin-home/admin-home';
+import { PlaneacionGestionPtComponent } from '../pages/home/planeacion-gestion-pt/planeacion-gestion-pt';
 
 export const remoteRoutes: Route[] = [
   {
@@ -32,16 +33,26 @@ export const remoteRoutes: Route[] = [
         component: Home,
         canActivate: [AuthGuard],
         data: {
-          requiredRoles: ['USUARIO', 'PLANES_DECANO', 'PLANES_SISTEMAS', 'PLANES_DIRECTOR', 'ADMIN', 'PLANES_PLANEACION', 'PLANES_VICERRECTORIA', 'PLANES_GESTION']
-        }
+          requiredRoles: [
+            'USUARIO',
+            'PLANES_DECANO',
+            'PLANES_SISTEMAS',
+            'PLANES_DIRECTOR',
+            'ADMIN',
+            'PLANES_PLANEACION', 
+            'PLANES_VICERRECTORIA',
+            'PLANES_GESTION',
+          ],
+        },
       },
 
       // Ruta especifica para gestion de planes de trabajo, accesible solo para rol de planeación
+
       {
         path: 'gestion-planes',
-        component: PlaneacionHome,
+        component: PlaneacionGestionPtComponent,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['PLANES_PLANEACION', 'ADMIN'] }
+        data: { requiredRoles: ['PLANES_PLANEACION', 'ADMIN'] },
       },
 
       // Rutas específicas para ADMIN con acceso libre
@@ -49,49 +60,49 @@ export const remoteRoutes: Route[] = [
         path: 'home-sistemas',
         component: SistemasHomeComponent,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['ADMIN'] }
+        data: { requiredRoles: ['ADMIN'] },
       },
       {
         path: 'home-planeacion',
         component: PlaneacionHome,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['ADMIN'] }
+        data: { requiredRoles: ['ADMIN'] },
       },
       {
         path: 'admin',
         component: AdminHomeComponent,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['ADMIN'] }
+        data: { requiredRoles: ['ADMIN'] },
       },
       {
         path: 'home-profesor',
         component: ProfesorHome,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['ADMIN'] }
+        data: { requiredRoles: ['ADMIN'] },
       },
       {
         path: 'home-decano',
         component: DecanoHome,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['ADMIN'] }
+        data: { requiredRoles: ['ADMIN'] },
       },
       {
         path: 'home-director',
         component: DirectorHome,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['ADMIN'] }
+        data: { requiredRoles: ['ADMIN'] },
       },
       {
         path: 'home-gestion-humana',
         component: GestionHumanaHomeComponent,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['ADMIN'] }
+        data: { requiredRoles: ['ADMIN'] },
       },
       {
         path: 'home-vicerrectoria',
         component: VicerrectoriaHome,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['ADMIN'] }
+        data: { requiredRoles: ['ADMIN'] },
       },
       // Otras rutas
       { path: 'notificaciones', component: Notificaciones },
@@ -99,26 +110,26 @@ export const remoteRoutes: Route[] = [
         path: 'novedades',
         component: Novedades,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['ADMIN', 'PLANES_GESTION'] } // Temporarily ADMIN only
+        data: { requiredRoles: ['ADMIN', 'PLANES_GESTION'] }, // Temporarily ADMIN only
       },
       {
         path: 'reportes',
         component: Reportes,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['PLANES_DIRECTOR', 'ADMIN'] }
+        data: { requiredRoles: ['PLANES_DIRECTOR', 'ADMIN'] },
       },
       {
         path: 'plan-de-trabajo',
         component: PlanDeTrabajo,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['PLANES_DIRECTOR', 'ADMIN'] }
+        data: { requiredRoles: ['PLANES_DIRECTOR', 'ADMIN'] },
       },
       {
         path: 'novedades-director',
         component: NovedadesDirectorComponent,
         canActivate: [AuthGuard],
-        data: { requiredRoles: ['PLANES_DIRECTOR', 'ADMIN'] }
-      }
-    ]
-  }
+        data: { requiredRoles: ['PLANES_DIRECTOR', 'ADMIN'] },
+      },
+    ],
+  },
 ];

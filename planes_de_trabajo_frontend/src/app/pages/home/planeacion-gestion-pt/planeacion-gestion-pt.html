@@ -43,8 +43,8 @@
         </label>
         <p-select
           [options]="periodosAcademicos"
-          [(ngModel)]="periodoSeleccionado"
-          (onChange)="onCambioPeriodo($event.value)"
+          [ngModel]="periodoSeleccionado()"
+          (ngModelChange)="periodoSeleccionado.set($event); onCambioPeriodo($event)"
           optionLabel="label"
           placeholder="Seleccione un periodo"
           styleClass="w-full"
@@ -360,7 +360,8 @@
 
 <!-- ─── Dialog: Ver Plan ───────────────────────────────────────────────────── -->
 <p-dialog
-  [(visible)]="showPlanViewer"
+  [visible]="showPlanViewer()"
+  (visibleChange)="showPlanViewer.set($event)"
   [modal]="true"
   [closable]="true"
   [draggable]="false"
@@ -375,9 +376,9 @@
   </ng-template>
 
   <app-plan-trabajo-viewer
-    *ngIf="showPlanViewer && planTrabajoIdViewer && profesorIdViewer"
-    [planDeTrabajoId]="planTrabajoIdViewer"
-    [profesorId]="profesorIdViewer"
+    *ngIf="showPlanViewer() && planTrabajoIdViewer() && profesorIdViewer()"
+    [planDeTrabajoId]="planTrabajoIdViewer()"
+    [profesorId]="profesorIdViewer()"
     rolUsuario="PLANEACION"
   >
   </app-plan-trabajo-viewer>
@@ -395,12 +396,14 @@
 
 <!-- ─── Dialog: Confirmar envío a Sistemas ────────────────────────────────── -->
 <p-dialog
-  [(visible)]="showModalConfirmarEnvio"
+  [visible]="showModalConfirmarEnvio()"
+  (visibleChange)="showModalConfirmarEnvio.set($event)"
   [modal]="true"
   [closable]="false"
   [draggable]="false"
   [resizable]="false"
   [style]="{'width': '460px', 'background': 'var(--p-surface-50)'}"
+  (onHide)="onCancelarEnvio()"
 >
   <ng-template pTemplate="header">
     <div class="flex items-center gap-2">

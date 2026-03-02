@@ -264,6 +264,29 @@ export class NotificacionesPlanTrabajoService {
     return this.http.post(`${this.planesTrabajoNotificationUrl}/notificar-aprobacion-decano`, notificationRequest);
   }
 
+    /**
+   * Notifica a planeación cuando el decano envía los planes aprobados
+   */
+  notificarEnvioPlaneacion(data: {
+    emailDecano: string;
+    nombreDecano: string;
+    programa: string;
+    periodo: number;
+    anio: number;
+    cantidadPlanes: number;
+  }): Observable<any> {
+    // Usar el endpoint centralizado que resuelve emails automáticamente
+    const notificationRequest = {
+      planeacionIdentificacion: 'planeacion',
+      planeacionNombre: 'Planeación',
+      programa: data.programa,
+      periodo: data.periodo.toString(),
+      anio: data.anio.toString()
+    };
+
+    return this.http.post(`${this.planesTrabajoNotificationUrl}/notificar-aprobacion-decano`, notificationRequest);
+  }
+
   /**
    * Notifica a Vicerrectoría cuando el decano envía planes para aprobación de cambio de horas
    * Busca usuario con identificacion='vice academica'
@@ -391,4 +414,6 @@ export class NotificacionesPlanTrabajoService {
 
     return this.http.post(`${this.planesTrabajoNotificationUrl}/notificar-observaciones-vicerrectoria`, notificationRequest);
   }
+
+  
 }

@@ -126,8 +126,8 @@ export class DecanoHome implements OnInit, OnDestroy {
   showPlanViewer = false;
   planTrabajoIdViewer: string = '';
   profesorIdViewer: string = '';
-  showModalEnviarProduccion = false;
-  cargandoEnvioProduccion = false;
+  showModalEnviarPlaneacion = false;
+  cargandoEnvioPlaneacion = false;
   cargandoAprobacion = false;
   planAprobandoId: string | null = null;
   profesorParaAprobar: ProfesorConPlan | null = null;
@@ -1467,11 +1467,11 @@ export class DecanoHome implements OnInit, OnDestroy {
     return decano ? `${decano.nombres} ${decano.apellidos}` : 'Cargando...';
   }
 
-  onEnviarAProduccionClick(): void {
-    this.showModalEnviarProduccion = true;
+  onEnviarAPlaneacionClick(): void {
+    this.showModalEnviarPlaneacion = true;
   }
 
-  onConfirmarEnviarProduccion(): void {
+  onConfirmarEnviarPlaneacion(): void {
     const planesAprobados = this.profesoresAprobadosDecanatura.filter(p => p.planDeTrabajo);
 
     if (planesAprobados.length === 0) {
@@ -1483,13 +1483,13 @@ export class DecanoHome implements OnInit, OnDestroy {
       return;
     }
 
-    this.cargandoEnvioProduccion = true;
+    this.cargandoEnvioPlaneacion = true;
     let planesEnviados = 0;
     let planesConError = 0;
 
     planesAprobados.forEach(profesor => {
       const actualizacion: UpdateFirmasPlanDeTrabajo = {
-        estado: 'Enviado a sistemas'
+        estado: 'Enviado a planeacion'
       };
 
       this.planDeTrabajoService.updateFirmas(profesor.planDeTrabajo!.id, actualizacion).subscribe({
@@ -1497,8 +1497,8 @@ export class DecanoHome implements OnInit, OnDestroy {
           planesEnviados++;
           if (planesEnviados + planesConError === planesAprobados.length) {
             // Enviar notificación a sistemas después de actualizar todos los planes
-            this.enviarNotificacionSistemas(planesEnviados);
-            this.finalizarEnvioProduccion(planesEnviados, planesConError);
+            this.enviarNotificacionPlaneacion(planesEnviados);
+            this.finalizarEnvioPlaneacion(planesEnviados, planesConError);
           }
         },
         error: (error) => {
@@ -1506,24 +1506,24 @@ export class DecanoHome implements OnInit, OnDestroy {
           if (planesEnviados + planesConError === planesAprobados.length) {
             // Enviar notificación aunque hubo errores
             if (planesEnviados > 0) {
-              this.enviarNotificacionSistemas(planesEnviados);
+              this.enviarNotificacionPlaneacion(planesEnviados);
             }
-            this.finalizarEnvioProduccion(planesEnviados, planesConError);
+            this.finalizarEnvioPlaneacion(planesEnviados, planesConError);
           }
         }
       });
     });
   }
 
-  private finalizarEnvioProduccion(enviados: number, errores: number): void {
-    this.cargandoEnvioProduccion = false;
-    this.showModalEnviarProduccion = false;
+  private finalizarEnvioPlaneacion(enviados: number, errores: number): void {
+    this.cargandoEnvioPlaneacion = false;
+    this.showModalEnviarPlaneacion = false;
 
     if (errores === 0) {
       this.messageService.add({
         severity: 'success',
         summary: 'Envío Exitoso',
-        detail: `Se enviaron ${enviados} planes de trabajo a sistemas`
+        detail: `Se enviaron ${enviados} planes de trabajo a planeación`
       });
     } else {
       this.messageService.add({
@@ -1539,7 +1539,7 @@ export class DecanoHome implements OnInit, OnDestroy {
     }
   }
 
-  private enviarNotificacionSistemas(cantidadPlanes: number): void {
+  private enviarNotificacionPlaneacion(cantidadPlanes: number): void {
     const decano = this.profesorDecano();
     if (!decano) {
       return;
@@ -1553,7 +1553,7 @@ export class DecanoHome implements OnInit, OnDestroy {
 
 
 
-    this.notificacionesService.notificarEnvioSistemas({
+    this.notificacionesService.notificarEnvioPlaneacion({
       emailDecano: decano.numIdentificacion,
       nombreDecano: `${decano.nombres} ${decano.apellidos}`,
       programa: primerPlan.idPrograma || decano.programa,
@@ -1593,15 +1593,15 @@ export class DecanoHome implements OnInit, OnDestroy {
     });
   }
 
-  onCancelarEnviarProduccion(): void {
-    this.showModalEnviarProduccion = false;
+  onCancelarEnviarPlaneacion(): void {
+    this.showModalEnviarPlaneacion = false;
   } 
 
   get cantidadPlanesParaEnviar(): number {
     return this.profesoresAprobadosDecanatura.length;
   }
 
-  get puedeEnviarAProduccion(): boolean {
+  get puedeEnviarAPlaneacion(): boolean {
     return this.cantidadPlanesParaEnviar > 0;
   }
 

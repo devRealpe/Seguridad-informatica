@@ -1,6 +1,5 @@
+<p-toast></p-toast>
 <div class="surface-ground min-h-screen">
-  <p-toast></p-toast>
-
   <div class="container mx-auto px-4 py-8">
     <div class="page-header mb-6 text-center">
       <h1
@@ -473,13 +472,13 @@
             }"
           >
             <p-button
-              label="Enviar a sistemas ({{ cantidadPlanesParaEnviar }})"
+              label="Enviar a planeación ({{ cantidadPlanesParaEnviar }})"
               icon="pi pi-check-circle"
               severity="success"
               [raised]="true"
-              [disabled]="!puedeEnviarAProduccion"
-              [loading]="cargandoEnvioProduccion"
-              (click)="onEnviarAProduccionClick()"
+              [disabled]="!puedeEnviarAPlaneacion"
+              [loading]="cargandoEnvioPlaneacion"
+              (click)="onEnviarAPlaneacionClick()"
               class="sm:w-auto"
               size="small"
             >
@@ -1360,15 +1359,15 @@
 </div>
 
 <app-modal-confirmacion
-  [visible]="showModalEnviarProduccion"
-  [titulo]="'Enviar Planes a Sistemas'"
-  [mensaje]="'¿Está seguro de que desea enviar ' + cantidadPlanesParaEnviar + ' plan(es) de trabajo a sistemas? Esta acción cambiará el estado de todos los planes aprobados.'"
+  [visible]="showModalEnviarPlaneacion"
+  [titulo]="'Enviar Planes a Planeación'"
+  [mensaje]="'¿Está seguro de que desea enviar ' + cantidadPlanesParaEnviar + ' plan(es) de trabajo a planeación? Esta acción cambiará el estado de todos los planes aprobados.'"
   textoConfirmar="Enviar"
   textoCancelar="Cancelar"
   severidad="success"
-  (visibleChange)="showModalEnviarProduccion = $event"
-  (onConfirmar)="onConfirmarEnviarProduccion()"
-  (onCancelar)="onCancelarEnviarProduccion()"
+  (visibleChange)="showModalEnviarPlaneacion = $event"
+  (onConfirmar)="onConfirmarEnviarPlaneacion()"
+  (onCancelar)="onCancelarEnviarPlaneacion()"
 >
 </app-modal-confirmacion>
 

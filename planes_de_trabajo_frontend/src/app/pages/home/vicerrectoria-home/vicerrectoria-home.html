@@ -1,7 +1,11 @@
-<div class="surface-ground min-h-screen"> <p-toast></p-toast>
+<p-toast></p-toast>
+<div class="surface-ground min-h-screen">
   <div class="container mx-auto px-4 py-8">
     <div class="page-header mb-6 text-center">
-      <h1 class="text-3xl font-bold mb-2" [style]="{'color': 'var(--p-text-color)'}">
+      <h1
+        class="text-3xl font-bold mb-2"
+        [style]="{'color': 'var(--p-text-color)'}"
+      >
         Planes de Trabajo - Vicerrectoría Académica
       </h1>
       <p class="text-lg text-muted" [style]="{'color': 'var(--p-text-muted)'}">
@@ -10,38 +14,62 @@
     </div>
 
     <!-- Filtro periodo -->
-    <p-card class="mb-4" [style]="{ 
+    <p-card
+      class="mb-4"
+      [style]="{ 
       'background': 'var(--p-surface-50)', 
       'border': '2px solid var(--p-surface-200)', 
       'border-radius': '12px',
       'padding': '1rem'
-    }">
-      <div class="flex flex-col sm:flex-row sm:align-items-center sm:justify-between gap-3">
+    }"
+    >
+      <div
+        class="flex flex-col sm:flex-row sm:align-items-center sm:justify-between gap-3"
+      >
         <div class="w-full sm:w-auto">
           <div class="flex align-items-center gap-3">
-            <i class="pi pi-calendar text-2xl" [style]="{'color': 'var(--p-primary-500)', 'margin-top': '-0.5rem'}"></i>
+            <i
+              class="pi pi-calendar text-2xl"
+              [style]="{'color': 'var(--p-primary-500)', 'margin-top': '-0.5rem'}"
+            ></i>
             <div class="flex-1">
-              <label class="block text-sm font-semibold mb-2" [style]="{'color': 'var(--p-text-color)'}">
+              <label
+                class="block text-sm font-semibold mb-2"
+                [style]="{'color': 'var(--p-text-color)'}"
+              >
                 Periodo Académico
               </label>
-              <p-select [options]="periodosAcademicos" [(ngModel)]="periodoSeleccionado"
-                (onChange)="onCambioPeriodo($event.value)" optionLabel="label" placeholder="Seleccione un periodo"
-                styleClass="w-full" [style]="{
+              <p-select
+                [options]="periodosAcademicos"
+                [(ngModel)]="periodoSeleccionado"
+                (onChange)="onCambioPeriodo($event.value)"
+                optionLabel="label"
+                placeholder="Seleccione un periodo"
+                styleClass="w-full"
+                [style]="{
                     'background': 'var(--p-surface-0)',
                     'border': '1px solid var(--p-surface-300)',
                     'color': 'var(--p-text-color)'
-                  }">
+                  }"
+              >
                 <ng-template #selectedItem let-selectedOption>
                   <div *ngIf="selectedOption">
-                    <i class="pi pi-calendar-plus text-blue-600 dark:text-blue-400"
-                      [style]="{'margin-right': '1rem'}"></i>
-                    <span class="font-semibold">{{ selectedOption.label }}</span>
+                    <i
+                      class="pi pi-calendar-plus text-blue-600 dark:text-blue-400"
+                      [style]="{'margin-right': '1rem'}"
+                    ></i>
+                    <span class="font-semibold"
+                      >{{ selectedOption.label }}</span
+                    >
                   </div>
                 </ng-template>
 
                 <ng-template let-periodo #item>
                   <div>
-                    <i class="pi pi-calendar text-blue-500 dark:text-blue-300" [style]="{'margin-right': '1rem'}"></i>
+                    <i
+                      class="pi pi-calendar text-blue-500 dark:text-blue-300"
+                      [style]="{'margin-right': '1rem'}"
+                    ></i>
                     <span>{{ periodo.label }}</span>
                   </div>
                 </ng-template>
@@ -56,39 +84,69 @@
     <div class="filters-section mb-4">
       <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div>
-          <label class="block text-sm font-semibold mb-2" [style]="{'color': 'var(--p-text-color)'}">
+          <label
+            class="block text-sm font-semibold mb-2"
+            [style]="{'color': 'var(--p-text-color)'}"
+          >
             Buscar por Identificación
           </label>
           <div class="flex gap-2 items-center">
-            <input pInputText type="text" [ngModel]="filtros().numIdentificacion" (input)="validateNumber($event)"
-              placeholder="Número de documento..." class="flex-1" [style]="{
+            <input
+              pInputText
+              type="text"
+              [ngModel]="filtros().numIdentificacion"
+              (input)="validateNumber($event)"
+              placeholder="Número de documento..."
+              class="flex-1"
+              [style]="{
                 'background': 'var(--p-surface-0)',
                 'border': onlyNumbers() ? '1px solid var(--p-surface-300)' : '1px solid red',
                 'color': 'var(--p-text-color)',
                 'padding': '0.75rem',
                 'width': '100%'
-              }" />
+              }"
+            />
           </div>
-          <small *ngIf="!onlyNumbers()" class="text-red-500 font-semibold animate-fade-in block mt-1">
-            <i class="pi pi-exclamation-triangle mr-1"></i> Solo se permiten números
+          <small
+            *ngIf="!onlyNumbers()"
+            class="text-red-500 font-semibold animate-fade-in block mt-1"
+          >
+            <i class="pi pi-exclamation-triangle mr-1"></i> Solo se permiten
+            números
           </small>
         </div>
         <div>
-          <app-input-component label="Buscar por Nombre" [ngModel]="filtros().nombres"
-            (ngModelChange)="aplicarFiltroTexto('nombres', $event)" placeholder="Nombre o apellido..." class="w-full">
+          <app-input-component
+            label="Buscar por Nombre"
+            [ngModel]="filtros().nombres"
+            (ngModelChange)="aplicarFiltroTexto('nombres', $event)"
+            placeholder="Nombre o apellido..."
+            class="w-full"
+          >
           </app-input-component>
         </div>
         <div>
-          <app-select-component label="Buscar por Programa" [options]="opcionesProgramas()"
-            [ngModel]="filtros().programa" (ngModelChange)="aplicarFiltroTexto('programa', $event)" [filter]="true"
-            class="w-full">
+          <app-select-component
+            label="Buscar por Programa"
+            [options]="opcionesProgramas()"
+            [ngModel]="filtros().programa"
+            (ngModelChange)="aplicarFiltroTexto('programa', $event)"
+            [filter]="true"
+            class="w-full"
+          >
           </app-select-component>
         </div>
         <div class="flex items-end">
-          <button pButton label="Limpiar filtros" icon="pi pi-filter-slash" [text]="true" (click)="limpiarFiltros()"
-            class="w-full h-10" [style]="{'top': '-1.5rem'}"
-            [disabled]="!filtros().programa && !filtros().nombres && !filtros().numIdentificacion">
-          </button>
+          <button
+            pButton
+            label="Limpiar filtros"
+            icon="pi pi-filter-slash"
+            [text]="true"
+            (click)="limpiarFiltros()"
+            class="w-full h-10"
+            [style]="{'top': '-1.5rem'}"
+            [disabled]="!filtros().programa && !filtros().nombres && !filtros().numIdentificacion"
+          ></button>
         </div>
       </div>
       <div class="mt-3 text-sm" [style]="{'color': 'var(--p-text-muted)'}">
@@ -97,20 +155,32 @@
     </div>
 
     <!-- Tabla de planes -->
-    <div class="professors-table mb-6" [style]="{
+    <div
+      class="professors-table mb-6"
+      [style]="{
       'background': 'var(--p-surface-50)',
       'border': '3px solid var(--p-primary-200)',
       'border-radius': '8px'
-    }">
-      <div [style]="{
+    }"
+    >
+      <div
+        [style]="{
         'background': 'var(--p-primary-600)',
         'color': 'var(--p-surface-0)',
         'padding': '1.5rem'
-      }">
+      }"
+      >
         <h3 class="text-lg font-semibold">Planes Enviados a Vicerrectoría</h3>
       </div>
-      <div [style]="{ padding: '1.5rem', 'background': 'var(--p-surface-50)', 'text-align': 'center'}">
-        <p-table [value]="data()" [paginator]="true" [rows]="10" [loading]="cargando()" responsiveLayout="scroll"
+      <div
+        [style]="{ padding: '1.5rem', 'background': 'var(--p-surface-50)', 'text-align': 'center'}"
+      >
+        <p-table
+          [value]="data()"
+          [paginator]="true"
+          [rows]="10"
+          [loading]="cargando()"
+          responsiveLayout="scroll"
           [style]="{
             '--p-paginator-background': 'var(--p-surface-50)',
             '--p-paginator-color': 'var(--p-text-color)',
@@ -122,113 +192,187 @@
             '--p-paginator-item-hover-color': 'var(--p-text-color)',
             '--p-paginator-item-selected-background': 'var(--p-primary-500)',
             '--p-paginator-item-selected-color': 'white'
-          }"><ng-template pTemplate="header">
+          }"
+          ><ng-template pTemplate="header">
             <tr>
-              <th [style]="{ 
+              <th
+                [style]="{ 
                 background: 'var(--p-surface-100)', 
                 color: 'var(--p-text-color)',
                 'text-align': 'center',
                 'border-bottom': '2px solid var(--p-surface-300)',
                 'padding': '0.75rem'
-              }">No.</th>
-              <th [style]="{ 
+              }"
+              >
+                No.
+              </th>
+              <th
+                [style]="{ 
                 background: 'var(--p-surface-100)', 
                 color: 'var(--p-text-color)',
                 'text-align': 'center',
                 'border-bottom': '2px solid var(--p-surface-300)',
                 'padding': '0.75rem'
-              }">Identificación</th>
-              <th [style]="{ 
+              }"
+              >
+                Identificación
+              </th>
+              <th
+                [style]="{ 
                 background: 'var(--p-surface-100)', 
                 color: 'var(--p-text-color)',
                 'text-align': 'center',
                 'border-bottom': '2px solid var(--p-surface-300)',
                 'padding': '0.75rem'
-              }">Nombres</th>
-              <th [style]="{ 
+              }"
+              >
+                Nombres
+              </th>
+              <th
+                [style]="{ 
                 background: 'var(--p-surface-100)', 
                 color: 'var(--p-text-color)',
                 'text-align': 'center',
                 'border-bottom': '2px solid var(--p-surface-300)',
                 'padding': '0.75rem'
-              }">Apellidos</th>
-              <th [style]="{ 
+              }"
+              >
+                Apellidos
+              </th>
+              <th
+                [style]="{ 
                 background: 'var(--p-surface-100)', 
                 color: 'var(--p-text-color)',
                 'text-align': 'center',
                 'border-bottom': '2px solid var(--p-surface-300)',
                 'padding': '0.75rem'
-              }">Programa</th>
-              <th [style]="{ 
+              }"
+              >
+                Programa
+              </th>
+              <th
+                [style]="{ 
                 background: 'var(--p-surface-100)', 
                 color: 'var(--p-text-color)',
                 'text-align': 'center',
                 'border-bottom': '2px solid var(--p-surface-300)',
                 'padding': '0.75rem'
-              }">Cargo</th>
-              <th [style]="{ 
+              }"
+              >
+                Cargo
+              </th>
+              <th
+                [style]="{ 
                 background: 'var(--p-surface-100)', 
                 color: 'var(--p-text-color)',
                 'text-align': 'center',
                 'border-bottom': '2px solid var(--p-surface-300)',
                 'padding': '0.75rem'
-              }">Dedicación</th>
-              <th [style]="{ 
+              }"
+              >
+                Dedicación
+              </th>
+              <th
+                [style]="{ 
                 background: 'var(--p-surface-100)', 
                 color: 'var(--p-text-color)',
                 'text-align': 'center',
                 'border-bottom': '2px solid var(--p-surface-300)',
                 'padding': '0.75rem'
-              }">Estado</th>
-              <th [style]="{ 
+              }"
+              >
+                Estado
+              </th>
+              <th
+                [style]="{ 
                 background: 'var(--p-surface-100)', 
                 color: 'var(--p-text-color)',
                 'text-align': 'center',
                 'border-bottom': '2px solid var(--p-surface-300)',
                 'padding': '0.75rem'
-              }">Acciones</th>
+              }"
+              >
+                Acciones
+              </th>
             </tr>
           </ng-template>
           <ng-template pTemplate="body" let-prof let-i="rowIndex">
-            <tr (click)="seleccionarProfesor(prof)" class="cursor-pointer"
-              [style.background]="profesorSeleccionado?.id === prof.id ? 'var(--p-surface-300)' : 'var(--p-surface-0)'">
+            <tr
+              (click)="seleccionarProfesor(prof)"
+              class="cursor-pointer"
+              [style.background]="profesorSeleccionado?.id === prof.id ? 'var(--p-surface-300)' : 'var(--p-surface-0)'"
+            >
               <td>{{ i + 1 }}</td>
               <td>{{ prof.documento }}</td>
               <td>{{ prof.nombres }}</td>
               <td>{{ prof.apellidos }}</td>
               <td>{{ prof.programa }}</td>
-              <td><p-tag [value]="prof.cargo" severity="info" rounded></p-tag></td>
-              <td><p-tag [value]="prof.dedicacion === 'TIEMPO COMPLETO' ? 'TC' : 'MT'"
-                  [severity]="prof.dedicacion === 'TIEMPO COMPLETO' ? 'success' : 'warn'" rounded></p-tag></td>
-              <td [style]="{'color': 'var(--p-text-color)', 'text-align': 'center'}">
-                <p-tag [value]="prof.estado" [severity]="prof.severityEstado || 'info'" rounded></p-tag>
+              <td>
+                <p-tag [value]="prof.cargo" severity="info" rounded></p-tag>
+              </td>
+              <td>
+                <p-tag
+                  [value]="prof.dedicacion === 'TIEMPO COMPLETO' ? 'TC' : 'MT'"
+                  [severity]="prof.dedicacion === 'TIEMPO COMPLETO' ? 'success' : 'warn'"
+                  rounded
+                ></p-tag>
+              </td>
+              <td
+                [style]="{'color': 'var(--p-text-color)', 'text-align': 'center'}"
+              >
+                <p-tag
+                  [value]="prof.estado"
+                  [severity]="prof.severityEstado || 'info'"
+                  rounded
+                ></p-tag>
               </td>
               <td (click)="$event.stopPropagation()" class="text-center">
                 <div class="flex justify-center gap-2">
-                  <p-button icon="pi pi-eye" severity="info" size="small" [style]="{
+                  <p-button
+                    icon="pi pi-eye"
+                    severity="info"
+                    size="small"
+                    [style]="{
                               background: 'var(--p-primary-500)',
                               border: '1px solid var(--p-primary-400)',
                               'box-shadow': '0 1px 2px rgba(0,0,0,0.1)',
                               padding: '0.3rem 0.5rem',
                               'border-radius': '10px',
                               color: 'white'
-                            }" (click)="onVerDetalles(prof)" pTooltip="Ver PT"></p-button>
-                  <p-button *ngIf="prof.estado === 'Solicitud enviada a Vicerrectoría'" icon="pi pi-clock"
-                    severity="warn" size="small" [style]="{
+                            }"
+                    (click)="onVerDetalles(prof)"
+                    pTooltip="Ver PT"
+                  ></p-button>
+                  <p-button
+                    *ngIf="prof.estado === 'Solicitud enviada a Vicerrectoría'"
+                    icon="pi pi-clock"
+                    severity="warn"
+                    size="small"
+                    [style]="{
                               border: '1px solid var(--p-warning-400)',
                               'box-shadow': '0 1px 2px rgba(0,0,0,0.1)',
                               padding: '0.3rem 0.5rem',
                               'border-radius': '10px',
-                            }" (click)="onVerSolicitudCambioHoras(prof)" pTooltip="Ver solicitud de cambio de horas">
+                            }"
+                    (click)="onVerSolicitudCambioHoras(prof)"
+                    pTooltip="Ver solicitud de cambio de horas"
+                  >
                   </p-button>
-                  <p-button *ngIf="prof.estado !== 'Solicitud enviada a Vicerrectoría'" icon="pi pi-comment"
-                    severity="info" size="small" [style]="{
+                  <p-button
+                    *ngIf="prof.estado !== 'Solicitud enviada a Vicerrectoría'"
+                    icon="pi pi-comment"
+                    severity="info"
+                    size="small"
+                    [style]="{
                               border: '1px solid var(--p-primary-400)',
                               'box-shadow': '0 1px 2px rgba(0,0,0,0.1)',
                               padding: '0.3rem 0.5rem',
-                              'border-radius': '10px',}" (click)="onAgregarObservaciones(prof)"
-                    [disabled]="prof.estado === 'Observaciones de Vicerrectoría'" pTooltip="Agregar observaciones"
-                    [pTooltip]="'Sólo se pueden agregar observaciones una única vez por Plan de Trabajo'">
+                              'border-radius': '10px',}"
+                    (click)="onAgregarObservaciones(prof)"
+                    [disabled]="prof.estado === 'Observaciones de Vicerrectoría'"
+                    pTooltip="Agregar observaciones"
+                    [pTooltip]="'Sólo se pueden agregar observaciones una única vez por Plan de Trabajo'"
+                  >
                   </p-button>
                 </div>
               </td>
@@ -236,10 +380,18 @@
           </ng-template>
           <ng-template pTemplate="emptymessage">
             <tr>
-              <td [style]="{'background': 'var(--p-surface-50)','color': 'var(--p-text-color)'}" colspan="9"
-                style="text-align: center; padding: 2rem;">
-                <i class="pi pi-inbox" style="font-size: 3rem; color: var(--p-text-muted)"></i>
-                <p class="mt-3" [style]="{'color': 'var(--p-text-muted)'}">No hay planes enviados a Vicerrectoría</p>
+              <td
+                [style]="{'background': 'var(--p-surface-50)','color': 'var(--p-text-color)'}"
+                colspan="9"
+                style="text-align: center; padding: 2rem"
+              >
+                <i
+                  class="pi pi-inbox"
+                  style="font-size: 3rem; color: var(--p-text-muted)"
+                ></i>
+                <p class="mt-3" [style]="{'color': 'var(--p-text-muted)'}">
+                  No hay planes enviados a Vicerrectoría
+                </p>
               </td>
             </tr>
           </ng-template>
@@ -249,14 +401,28 @@
   </div>
 
   <!-- Modal de observaciones -->
-  <p-dialog [(visible)]="mostrarModalObservaciones" [modal]="true" [closable]="true" [draggable]="false"
-    [resizable]="false" [style]="{ width: '90%', maxWidth: '600px', background: 'var(--p-surface-50)' }"
-    styleClass="observaciones-dialog">
+  <p-dialog
+    [(visible)]="mostrarModalObservaciones"
+    [modal]="true"
+    [closable]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '90%', maxWidth: '600px', background: 'var(--p-surface-50)' }"
+    styleClass="observaciones-dialog"
+  >
     <ng-template pTemplate="header">
-      <h3 class="font-semibold" [style]="{ color: '#FFFFFF', 'font-size': '1rem' }">Registrar Observación</h3>
+      <h3
+        class="font-semibold"
+        [style]="{ color: '#FFFFFF', 'font-size': '1rem' }"
+      >
+        Registrar Observación
+      </h3>
     </ng-template>
     <div class="p-4 space-y-4">
-      <p class="font-medium">Profesor: {{ profesorParaObservar?.nombres }} {{ profesorParaObservar?.apellidos }}</p>
+      <p class="font-medium">
+        Profesor: {{ profesorParaObservar?.nombres }} {{
+        profesorParaObservar?.apellidos }}
+      </p>
 
       <div class="flex items-center gap-2">
         <p-checkbox [(ngModel)]="sinObservaciones" binary></p-checkbox>
@@ -265,104 +431,178 @@
 
       <div *ngIf="!sinObservaciones" class="mt-3">
         <label class="block mb-2 font-medium">Observaciones:</label>
-        <textarea *ngIf="!sinObservaciones" class="w-full p-3 border rounded-lg" rows="4"
-          [(ngModel)]="motivoObservacion" [disabled]="sinObservaciones" [style]="{
+        <textarea
+          *ngIf="!sinObservaciones"
+          class="w-full p-3 border rounded-lg"
+          rows="4"
+          [(ngModel)]="motivoObservacion"
+          [disabled]="sinObservaciones"
+          [style]="{
             'background': 'var(--p-surface-0)',
             'border': '1px solid var(--p-surface-300)',
             'color': 'var(--p-text-color)'
-          }"></textarea>
+          }"
+        ></textarea>
       </div>
-      <button type="button" pButton label="Confirmar" class="p-button-success"
-        (click)="onConfirmarObservaciones()"></button>
+      <button
+        type="button"
+        pButton
+        label="Confirmar"
+        class="p-button-success"
+        (click)="onConfirmarObservaciones()"
+      ></button>
     </div>
   </p-dialog>
 
-
-  <p-dialog [(visible)]="showPlanViewer" [modal]="true" [closable]="true" [draggable]="false" [resizable]="false"
+  <p-dialog
+    [(visible)]="showPlanViewer"
+    [modal]="true"
+    [closable]="true"
+    [draggable]="false"
+    [resizable]="false"
     [style]="{ 'background': 'var(--p-surface-50)', width: '95vw', maxWidth: '1200px', height: '90vh' }"
-    (onHide)="onCerrarPlanViewer()">
+    (onHide)="onCerrarPlanViewer()"
+  >
     <ng-template pTemplate="header">
-      <h2 class="text-xl font-bold" [style.color]="'var(--p-text-color)'">Revisar Plan de Trabajo</h2>
+      <h2 class="text-xl font-bold" [style.color]="'var(--p-text-color)'">
+        Revisar Plan de Trabajo
+      </h2>
     </ng-template>
     <div class="p-2">
-      <app-plan-trabajo-viewer *ngIf="showPlanViewer && planTrabajoIdViewer && profesorIdViewer"
-        [planDeTrabajoId]="planTrabajoIdViewer" [profesorId]="profesorIdViewer" [rolUsuario]="'VICERRECTOR'">
+      <app-plan-trabajo-viewer
+        *ngIf="showPlanViewer && planTrabajoIdViewer && profesorIdViewer"
+        [planDeTrabajoId]="planTrabajoIdViewer"
+        [profesorId]="profesorIdViewer"
+        [rolUsuario]="'VICERRECTOR'"
+      >
       </app-plan-trabajo-viewer>
     </div>
     <ng-template pTemplate="footer">
-      <p-button label="Cerrar" icon="pi pi-times" severity="secondary" [outlined]="true"
-        (click)="onCerrarPlanViewer()"></p-button>
+      <p-button
+        label="Cerrar"
+        icon="pi pi-times"
+        severity="secondary"
+        [outlined]="true"
+        (click)="onCerrarPlanViewer()"
+      ></p-button>
     </ng-template>
   </p-dialog>
 
   <!-- Modal de solicitud de cambio de horas -->
-  <p-dialog [(visible)]="mostrarModalCambioHoras" [modal]="true" [closable]="true" [draggable]="false"
-    [resizable]="false" [style]="{ width: '90%', maxWidth: '700px', background: 'var(--p-surface-50)' }">
+  <p-dialog
+    [(visible)]="mostrarModalCambioHoras"
+    [modal]="true"
+    [closable]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '90%', maxWidth: '700px', background: 'var(--p-surface-50)' }"
+  >
     <ng-template pTemplate="header">
-      <h3 class="font-semibold" [style.color]="'white !important'">Solicitud de Cambio de Horas</h3>
+      <h3 class="font-semibold" [style.color]="'white !important'">
+        Solicitud de Cambio de Horas
+      </h3>
     </ng-template>
     <div class="p-4 space-y-4">
       <!-- Descripción del cambio -->
       <div class="mb-3" *ngIf="solicitudCambioHoras?.descripcion">
-        <label class="block font-semibold mb-2" [style]="{'color': 'var(--p-text-color)'}">
+        <label
+          class="block font-semibold mb-2"
+          [style]="{'color': 'var(--p-text-color)'}"
+        >
           <i class="pi pi-comment mr-2"></i>Descripción del cambio:
         </label>
-        <div class="p-3 border-round" [style]="{
+        <div
+          class="p-3 border-round"
+          [style]="{
           'background': 'var(--p-surface-100)',
           'border': '1px solid var(--p-surface-300)',
           'color': 'var(--p-text-color)'
-        }">
+        }"
+        >
           {{ solicitudCambioHoras?.descripcion }}
         </div>
       </div>
 
       <!-- Resumen del cambio -->
       <div class="mb-3">
-        <p class="font-medium" [style]="{'color': 'var(--p-text-color)', 'line-height': '1.6'}">
+        <p
+          class="font-medium"
+          [style]="{'color': 'var(--p-text-color)', 'line-height': '1.6'}"
+        >
           Se solicita cambiar las horas de
           <strong>{{ solicitudCambioHoras?.actividadAumento?.nombre }}</strong>
-          de <span class="text-red-500 font-bold">{{ solicitudCambioHoras?.actividadAumento?.horasActuales }}h</span>
-          a <span class="text-green-500 font-bold">{{ solicitudCambioHoras?.actividadAumento?.horasNuevas }}h</span>
+          de
+          <span class="text-red-500 font-bold"
+            >{{ solicitudCambioHoras?.actividadAumento?.horasActuales }}h</span
+          >
+          a
+          <span class="text-green-500 font-bold"
+            >{{ solicitudCambioHoras?.actividadAumento?.horasNuevas }}h</span
+          >
           reduciendo las horas de
           <ng-container
-            *ngFor="let act of solicitudCambioHoras?.actividadesDisminucion; let i = index; let last = last">
+            *ngFor="let act of solicitudCambioHoras?.actividadesDisminucion; let i = index; let last = last"
+          >
             <strong>{{ act.nombre }}</strong>
-            de <span class="text-green-500 font-bold">{{ act.horasActuales }}h</span>
-            a <span class="text-red-500 font-bold">{{ act.horasNuevas }}h</span><ng-container *ngIf="!last">,
-            </ng-container>
+            de
+            <span class="text-green-500 font-bold"
+              >{{ act.horasActuales }}h</span
+            >
+            a <span class="text-red-500 font-bold">{{ act.horasNuevas }}h</span
+            ><ng-container *ngIf="!last">, </ng-container>
           </ng-container>
         </p>
       </div>
 
       <!-- Detalle de actividades afectadas -->
       <div class="mt-4">
-        <label class="block font-semibold mb-2" [style]="{'color': 'var(--p-text-color)'}">
+        <label
+          class="block font-semibold mb-2"
+          [style]="{'color': 'var(--p-text-color)'}"
+        >
           <i class="pi pi-list mr-2"></i>Detalle de actividades:
         </label>
 
         <!-- Actividad con aumento -->
-        <div *ngIf="solicitudCambioHoras?.actividadAumento" class="p-3 mb-2 border-round" [style]="{
+        <div
+          *ngIf="solicitudCambioHoras?.actividadAumento"
+          class="p-3 mb-2 border-round"
+          [style]="{
           'background': 'var(--p-green-50)',
           'border': '1px solid var(--p-green-300)'
-        }">
+        }"
+        >
           <div class="flex justify-between items-center">
             <span [style]="{'color': 'var(--p-text-color)'}">
               <i class="pi pi-arrow-up text-green-500 mr-2"></i>
               {{ solicitudCambioHoras?.actividadAumento?.nombre }}
             </span>
             <span>
-              <span class="text-muted">{{ solicitudCambioHoras?.actividadAumento?.horasActuales }}h</span>
-              <i class="pi pi-arrow-right mx-2" [style]="{'color': 'var(--p-text-muted)'}"></i>
-              <span class="font-bold text-green-600">{{ solicitudCambioHoras?.actividadAumento?.horasNuevas }}h</span>
+              <span class="text-muted"
+                >{{ solicitudCambioHoras?.actividadAumento?.horasActuales
+                }}h</span
+              >
+              <i
+                class="pi pi-arrow-right mx-2"
+                [style]="{'color': 'var(--p-text-muted)'}"
+              ></i>
+              <span class="font-bold text-green-600"
+                >{{ solicitudCambioHoras?.actividadAumento?.horasNuevas
+                }}h</span
+              >
             </span>
           </div>
         </div>
 
         <!-- Actividades con disminución -->
-        <div *ngFor="let act of solicitudCambioHoras?.actividadesDisminucion" class="p-3 mb-2 border-round" [style]="{
+        <div
+          *ngFor="let act of solicitudCambioHoras?.actividadesDisminucion"
+          class="p-3 mb-2 border-round"
+          [style]="{
           'background': 'var(--p-red-50)',
           'border': '1px solid var(--p-red-300)'
-        }">
+        }"
+        >
           <div class="flex justify-between items-center">
             <span [style]="{'color': 'var(--p-text-color)'}">
               <i class="pi pi-arrow-down text-red-500 mr-2"></i>
@@ -370,7 +610,10 @@
             </span>
             <span>
               <span class="text-muted">{{ act.horasActuales }}h</span>
-              <i class="pi pi-arrow-right mx-2" [style]="{'color': 'var(--p-text-muted)'}"></i>
+              <i
+                class="pi pi-arrow-right mx-2"
+                [style]="{'color': 'var(--p-text-muted)'}"
+              ></i>
               <span class="font-bold text-red-600">{{ act.horasNuevas }}h</span>
             </span>
           </div>
@@ -378,9 +621,20 @@
       </div>
     </div>
     <div class="flex justify-end gap-2 p-4">
-      <button type="button" pButton label="Rechazar" class="p-button-outlined p-button-danger"
-        (click)="onRechazarCambioHoras()"></button>
-      <button type="button" pButton label="Aceptar" class="p-button-success" (click)="onAceptarCambioHoras()"></button>
+      <button
+        type="button"
+        pButton
+        label="Rechazar"
+        class="p-button-outlined p-button-danger"
+        (click)="onRechazarCambioHoras()"
+      ></button>
+      <button
+        type="button"
+        pButton
+        label="Aceptar"
+        class="p-button-success"
+        (click)="onAceptarCambioHoras()"
+      ></button>
     </div>
   </p-dialog>
 </div>

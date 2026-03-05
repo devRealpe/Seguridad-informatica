@@ -263,6 +263,37 @@ public class PlanEventPublisher {
         }
 
         /**
+         * Publica evento cuando Planeación rechaza un plan.
+         * El evento se envía específicamente al director del programa.
+         */
+        public void planRechazadoPorPlaneacion(String directorIdentificacion,
+                        String profesorNombre,
+                        String directorNombre,
+                        String planeacionNombre,
+                        String programa,
+                        String periodo,
+                        String anio,
+                        String motivo) {
+
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("profesorNombre", profesorNombre);
+                metadata.put("directorNombre", directorNombre);
+                metadata.put("planeacionNombre", planeacionNombre);
+                metadata.put("programa", programa);
+                metadata.put("periodo", periodo);
+                metadata.put("anio", anio);
+                metadata.put("motivo", motivo);
+
+                publishActionForUser(
+                                "plan_rechazado_planeacion",
+                                directorIdentificacion,
+                                "Plan Rechazado por Planeación",
+                                String.format("Planeación ha rechazado el plan de trabajo del profesor %s. Motivo: %s",
+                                                profesorNombre, motivo),
+                                metadata);
+        }
+
+        /**
          * Publica evento cuando se envía un plan a decanatura.
          * El evento se envía específicamente al decano.
          */

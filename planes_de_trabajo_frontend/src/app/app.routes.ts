@@ -3,8 +3,13 @@ import { LoginComponent, RegisterComponent, ForgotPasswordComponent } from '@mic
 
 
 export const appRoutes: Route[] = [
-    {
-    path:'',
+  {
+    path: '',
+    redirectTo: '',
+    pathMatch: 'full'
+  },
+  {
+    path: '',
     component: LoginComponent
   },
   {

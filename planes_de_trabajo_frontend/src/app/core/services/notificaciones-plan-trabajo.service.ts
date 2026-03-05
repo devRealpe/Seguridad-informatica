@@ -242,6 +242,40 @@ export class NotificacionesPlanTrabajoService {
   }
 
   /**
+ * Notifica al DIRECTOR Y PROFESOR cuando PLANEACIÓN rechaza el plan
+ */
+notificarRechazoPlaneacion(data: {
+  emailProfesor: string;
+  nombreProfesor: string;
+  emailDirector: string;
+  nombreDirector: string;
+  emailPlaneacion: string;
+  nombrePlaneacion: string;
+  programa: string;
+  periodo: number;
+  anio: number;
+  motivo: string;
+}): Observable<any> {
+
+  const notificationRequest = {
+    directorIdentificacion: data.emailDirector,
+    profesorIdentificacion: data.emailProfesor,
+    directorNombre: data.nombreDirector,
+    profesorNombre: data.nombreProfesor,
+    planeacionNombre: data.nombrePlaneacion,
+    programa: data.programa,
+    periodo: data.periodo.toString(),
+    anio: data.anio.toString(),
+    motivo: data.motivo
+  };
+
+  return this.http.post(
+    `${this.planesTrabajoNotificationUrl}/notificar-rechazo-planeacion`,
+    notificationRequest
+  );
+}
+
+  /**
    * Notifica a sistemas cuando el decano envía los planes aprobados
    */
   notificarEnvioSistemas(data: {

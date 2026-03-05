@@ -357,6 +357,60 @@ public class PlanDeTrabajoService {
                             planGuardado.getIdPrograma(), periodo, anio, motivo);
                 }
             }
+
+            // Caso 4: Planeación rechaza el plan
+            else if (estado != null && estado.contains("Rechazado por Planeacion")) {
+
+                ExternalServiceClient.UserData planeacionData = externalServiceClient
+                        .getUserDataByIdentificacion(planGuardado.getIdPlaneacion(), "Planes de Trabajo");
+
+                ExternalServiceClient.UserData directorData = externalServiceClient
+                        .getUserDataByIdentificacion(planGuardado.getIdDirector(), "Planes de Trabajo");
+
+                ExternalServiceClient.UserData profesorData = externalServiceClient
+                        .getUserDataByIdentificacion(planGuardado.getIdProfesor(), "Planes de Trabajo");
+
+                if (planeacionData != null && directorData != null && profesorData != null) {
+
+                    try {
+                        Map<String, String> notificationRequest = new HashMap<>();
+
+                        // Se notifica a la DIRECTORA
+                        notificationRequest.put("directorIdentificacion", planGuardado.getIdDirector());
+
+                        // También al profesor
+                        notificationRequest.put("profesorIdentificacion", planGuardado.getIdProfesor());
+
+                        notificationRequest.put("planeacionNombre", planeacionData.getNombreCompleto());
+                        notificationRequest.put("directorNombre", directorData.getNombreCompleto());
+                        notificationRequest.put("profesorNombre", profesorData.getNombreCompleto());
+
+                        notificationRequest.put("programa", planGuardado.getIdPrograma());
+                        notificationRequest.put("periodo", periodo);
+                        notificationRequest.put("anio", anio);
+                        notificationRequest.put("motivo", motivo);
+
+                        restTemplate.postForEntity(
+                                generalMongoUrl + "/planes-trabajo/notificar-rechazo-planeacion",
+                                notificationRequest,
+                                Map.class);
+
+                    } catch (Exception e) {
+                        System.err.println("Error al enviar notificación de rechazo planeación: " + e.getMessage());
+                    }
+
+                    // Evento en tiempo real (SSE / WebSocket)
+                    planEventPublisher.planRechazadoPorPlaneacion(
+                            planGuardado.getIdDirector(),
+                            profesorData.getNombreCompleto(),
+                            directorData.getNombreCompleto(),
+                            planeacionData.getNombreCompleto(),
+                            planGuardado.getIdPrograma(),
+                            periodo,
+                            anio,
+                            motivo);
+                }
+            }
         }
 
         // ========== FIN LÓGICA DE RECHAZOS ==========
@@ -502,43 +556,4 @@ public class PlanDeTrabajoService {
         boolean tieneNovedadAprobada = novedades.stream()
                 .anyMatch(n -> "APROBADA".equals(n.getEstado()));
     }
-
-    @Transactional
-    public PlanDeTrabajo planeacionEnviaASistemas(UUID id) {
-        PlanDeTrabajo plan = planDeTrabajoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Plan de Trabajo no encontrado con ID: " + id));
-
-        if (!"Enviado a Planeación".equals(plan.getEstado()) &&
-                !"Aprobado por Planeación".equals(plan.getEstado())) {
-            throw new RuntimeException(
-                    "El plan debe estar en estado 'Enviado a Planeación' para poder enviarlo a Sistemas. " +
-                            "Estado actual: " + plan.getEstado());
-        }
-
-        String periodo = plan.getPeriodo() != null ? plan.getPeriodo().toString() : "";
-        String anio = plan.getAnio() != null ? plan.getAnio().toString() : "";
-
-        plan.setEstado("Enviado a sistemas");
-        PlanDeTrabajo planGuardado = planDeTrabajoRepository.save(plan);
-
-        try {
-            Map<String, String> notificationRequest = new HashMap<>();
-            notificationRequest.put("sistemasIdentificacion", "sistemas");
-            notificationRequest.put("sistemasNombre", "Sistemas");
-            notificationRequest.put("programa", planGuardado.getIdPrograma());
-            notificationRequest.put("periodo", periodo);
-            notificationRequest.put("anio", anio);
-
-            restTemplate.postForEntity(
-                    generalMongoUrl + "/planes-trabajo/notificar-aprobacion-planeacion",
-                    notificationRequest, Map.class);
-        } catch (Exception e) {
-            System.err.println("Error al enviar notificación a sistemas: " + e.getMessage());
-        }
-
-        planEventPublisher.planEnviadoSistemas("Planeación", planGuardado.getIdPrograma(), periodo, anio, 1);
-
-        return planGuardado;
-    }
-
 }

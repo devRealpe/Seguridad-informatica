@@ -122,10 +122,26 @@ export class FirmaService {
     return this.actualizarFirmas(planDeTrabajoId, firmaData);
   }
 
-  enviarAPlaneacion(planDeTrabajoId: string): Observable<PlanDeTrabajoModel> {
-    const firmaData: UpdateFirmasPlanDeTrabajo = {
-      estado: 'Enviado a Planeación',
-    };
-    return this.actualizarFirmas(planDeTrabajoId, firmaData);
-  }
+  /**
+ * Rechaza un plan desde Planeación
+ * @param planDeTrabajoId ID del plan
+ * @param motivoRechazo Motivo del rechazo
+ */
+rechazarDesdePlaneacion(
+  planDeTrabajoId: string,
+  motivoRechazo: string
+): Observable<PlanDeTrabajoModel> {
+
+  const firmaData: UpdateFirmasPlanDeTrabajo = {
+    enviadoProfesor: false,
+    firmaProfesor: false,
+    firmaDirector: false,
+    firmaDecano: false,
+    rechazado: true,
+    estado: 'Rechazado por Planeacion',
+    motivoRechazo: motivoRechazo,
+  };
+
+  return this.actualizarFirmas(planDeTrabajoId, firmaData);
+}
 }

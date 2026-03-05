@@ -315,6 +315,30 @@
                 >
                 </p-button>
 
+                <!-- Rechazar -->
+                <p-button
+                  *ngIf="profesor.estado === 'Enviado a planeación' ||  profesor.estado === 'Rechazado por Decanatura' || profesor.estado === 'Revisado'"
+                  icon="pi pi-times"
+                  [raised]="true"
+                  severity="danger"
+                  size="small"
+                  [style]="{ 
+                        background: (profesor.estado === 'Aprobado' || profesor.estado === 'Rechazado' || profesor.estado === 'Enviado a sistemas' || profesor.estado === 'Rechazado por Decanatura' ) ? 'var(--p-surface-200)' : 'danger',
+                        border: (profesor.estado === 'Aprobado' || profesor.estado === 'Rechazado' || profesor.estado === 'Enviado a sistemas' || profesor.estado === 'Rechazado por Decanatura') ? '1px solid var(--p-surface-300)' : '1px solid danger',
+                        'box-shadow': '0 1px 2px rgba(0,0,0,0.1)',
+                        padding: '0.3rem 0.5rem',
+                        'border-radius': '10px',
+                        color: 'white',
+                        cursor: (profesor.estado === 'Aprobado' || profesor.estado === 'Rechazado' || profesor.estado === 'Enviado a sistemas' || profesor.estado === 'Rechazado por Decanatura') ? 'not-allowed' : 'pointer',
+                        opacity: (profesor.estado === 'Aprobado' || profesor.estado === 'Rechazado' || profesor.estado === 'Enviado a sistemas'|| profesor.estado === 'Rechazado por Decanatura') ? '0.6' : '1'
+                      }"
+                  pTooltip="Rechazar plan"
+                  tooltipPosition="top"
+                  [disabled]="profesor.estado === 'Aprobado' || profesor.estado === 'Rechazado' || profesor.estado === 'Enviado a sistemas'|| profesor.estado === 'Rechazado por Decanatura'"
+                  (click)="onRechazarIndividual(profesor)"
+                >
+                </p-button>
+
                 <!-- Enviar a Sistemas -->
                 <p-button
                   icon="pi pi-send"
@@ -325,6 +349,7 @@
                   pTooltip="Enviar a Sistemas"
                   tooltipPosition="top"
                   [style]="{'border-radius': '8px', 'padding': '0.3rem 0.5rem'}"
+                  [disabled]="profesor.estado !== 'Enviado a planeación'"
                   (click)="onEnviarASistemasClick(profesor)"
                 >
                 </p-button>
@@ -393,6 +418,16 @@
     />
   </ng-template>
 </p-dialog>
+
+<app-modal-rechazar-pt
+  [(visible)]="showModalRechazar"
+  [titulo]="'Rechazar Plan de Trabajo'"
+  [nombreProfesor]="profesorParaRechazar ? (profesorParaRechazar.nombres + ' ' + profesorParaRechazar.apellidos) : ''"
+  [mensaje]="profesorParaRechazar ? '¿Está seguro de que desea rechazar el plan de trabajo de ' + profesorParaRechazar.nombres + ' ' + profesorParaRechazar.apellidos + '? Por favor, indique el motivo.' : '¿Está seguro de que desea rechazar este plan de trabajo? Por favor, indique el motivo.'"
+  (onConfirmar)="onConfirmarRechazar($event)"
+  (onCancelar)="showModalRechazar = false"
+>
+</app-modal-rechazar-pt>
 
 <!-- ─── Dialog: Confirmar envío a Sistemas ────────────────────────────────── -->
 <p-dialog

@@ -51,7 +51,8 @@ public class PlanDeTrabajoController {
 
     @GetMapping("/profesor/{idProfesor}/{anio}/{periodo}")
     @Operation(summary = "Obtener el plan de trabajo más reciente de un profesor")
-    public ResponseEntity<Optional<PlanDeTrabajo>> getPtByProfesorAndPeriodoAcademico(@PathVariable String idProfesor, @PathVariable BigDecimal anio, @PathVariable BigDecimal periodo) {
+    public ResponseEntity<Optional<PlanDeTrabajo>> getPtByProfesorAndPeriodoAcademico(@PathVariable String idProfesor,
+            @PathVariable BigDecimal anio, @PathVariable BigDecimal periodo) {
         return ResponseEntity.ok(planDeTrabajoService.getPTByProfesorAndPeriodoAcademico(idProfesor, anio, periodo));
     }
 
@@ -63,25 +64,29 @@ public class PlanDeTrabajoController {
 
     @PutMapping("/{id}/firmas")
     @Operation(summary = "Actualizar firmas y estado de envío del plan de trabajo")
-    public ResponseEntity<PlanDeTrabajo> actualizarFirmas(@PathVariable UUID id, @Valid @RequestBody PlanDeTrabajoUpdateRequest requestDTO) {
+    public ResponseEntity<PlanDeTrabajo> actualizarFirmas(@PathVariable UUID id,
+            @Valid @RequestBody PlanDeTrabajoUpdateRequest requestDTO) {
         return ResponseEntity.ok(planDeTrabajoService.actualizarFirmas(id, requestDTO));
     }
 
     @PutMapping("/{idPlan}/reasignar")
     @Operation(summary = "Reasignar un plan de trabajo a un nuevo profesor")
-    public ResponseEntity<PlanDeTrabajo> reasignarPlan(@PathVariable UUID idPlan, @Valid @RequestBody PlanDeTrabajoReasignar request) {
-        return ResponseEntity.ok(planDeTrabajoService.reasignarPT(idPlan,request));
+    public ResponseEntity<PlanDeTrabajo> reasignarPlan(@PathVariable UUID idPlan,
+            @Valid @RequestBody PlanDeTrabajoReasignar request) {
+        return ResponseEntity.ok(planDeTrabajoService.reasignarPT(idPlan, request));
     }
 
     @Operation(summary = "Obtiene el motivo de rechazo por ID plan de trabajo")
     @GetMapping("/{id}/motivo")
     public ResponseEntity<String> getMotivoByPtId(@PathVariable UUID id) {
-        return planDeTrabajoService.getMotivoByPtId(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return planDeTrabajoService.getMotivoByPtId(id).map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @Operation(summary = "Actualiza el motivo del rechazo de un plan de trabajo por ID")
     @PutMapping("/{id}/motivo-rechazo")
-    public ResponseEntity<PlanDeTrabajo> asignarMotivoRechazo(@PathVariable UUID id, @RequestBody String motivoRechazo) {
+    public ResponseEntity<PlanDeTrabajo> asignarMotivoRechazo(@PathVariable UUID id,
+            @RequestBody String motivoRechazo) {
         return ResponseEntity.ok(planDeTrabajoService.asignarMotivoRechazo(id, motivoRechazo));
     }
 
@@ -95,11 +100,12 @@ public class PlanDeTrabajoController {
     @Operation(summary = "Activar el registro de novedades para un plan de trabajo")
     public ResponseEntity<?> activarNovedades(@PathVariable UUID id, @PathVariable boolean estado) {
         PlanDeTrabajo planActualizado = planDeTrabajoService.activarNovedades(id, estado);
-        return ResponseEntity.ok(planActualizado);     
+        return ResponseEntity.ok(planActualizado);
     }
-    
+
     @GetMapping("/periodo/{anio}/{periodo}/estado/{estado}")
-    public ResponseEntity<List<PlanDeTrabajo>> getByPeriodoAndEstado(@PathVariable Integer anio, @PathVariable Integer periodo, @PathVariable String estado) {
+    public ResponseEntity<List<PlanDeTrabajo>> getByPeriodoAndEstado(@PathVariable Integer anio,
+            @PathVariable Integer periodo, @PathVariable String estado) {
         List<PlanDeTrabajo> planes = planDeTrabajoService.findByAnioAndPeriodoAndEstado(anio, periodo, estado);
         return ResponseEntity.ok(planes);
     }

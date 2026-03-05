@@ -80,11 +80,4 @@ export class PlanDeTrabajoService {
       `${this.base}/periodo/${anio}/${periodo}/estado/${encodeURIComponent(estado)}`
     );
   }
-
-enviarASistemas(planId: string): Observable<PlanDeTrabajoModel> {
-  return this.http.put<PlanDeTrabajoModel>(
-    `${environment.apiPlanesDeTraba}/planeacion/${encodeURIComponent(planId)}/enviar-a-sistemas`,
-    {}
-  );
-}
 }

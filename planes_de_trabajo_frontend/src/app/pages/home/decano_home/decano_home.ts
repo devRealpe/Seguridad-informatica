@@ -677,8 +677,8 @@ export class DecanoHome implements OnInit, OnDestroy {
       return { estado: 'Solicitud enviada a Vicerrectoría', severity: 'info' };
     }
 
-    if (plan.estado === 'Enviado a sistemas') {
-      return { estado: 'Enviado a sistemas', severity: 'success' };
+    if (plan.estado === 'Enviado a planeacion') {
+      return { estado: 'Enviado a planeación', severity: 'success' };
     }
 
     if (plan.estado === 'Observaciones de Vicerrectoría') {
@@ -1577,8 +1577,6 @@ export class DecanoHome implements OnInit, OnDestroy {
     if (!primerPlan) {
       return;
     }
-
-
 
     this.notificacionesService.notificarEnvioVicerrectoria({
       emailDecano: decano.numIdentificacion,

@@ -52,7 +52,7 @@ interface ActividadView extends Actividad {
         TooltipModule,
         ModalCrearActividadComponent,
         ModalCrearSeccionComponent,
-        DividerModule,
+        DividerModule
     ],
     providers: [MessageService]
 })
@@ -72,39 +72,36 @@ export class PlaneacionHome implements OnInit {
     guardandoSeccion = false;
     private debounceTimeouts: { [key: string]: any } = {};
 
-constructor(
-    private plantillaService: PlantillaService,
-    private seccionService: SeccionService,
-    private actividadService: ActividadService,
-    private messageService: MessageService,
-    private realtimeService: PlanTrabajoRealtimeService
-) {
-    effect(() => {
-        const trigger = this.realtimeService.refreshTrigger();
+    constructor(
+        private plantillaService: PlantillaService,
+        private seccionService: SeccionService,
+        private actividadService: ActividadService,
+        private messageService: MessageService,
+        private realtimeService: PlanTrabajoRealtimeService
+    ) {
+        effect(() => {
+            const trigger = this.realtimeService.refreshTrigger();
 
-        // Solo actuar si hay plantilla seleccionada Y el trigger es relevante
-        if (trigger > 0) {
-            untracked(() => {
-                const planActualizado = this.realtimeService.planActualizado();
+            if (trigger > 0 && this.plantillaSeleccionada) {
+                untracked(() => {
+                    
+                    const planActualizado = this.realtimeService.planActualizado();
 
-                if (planActualizado) {
-                    this.messageService.add({
-                        severity: 'info',
-                        summary: 'Actualización Detectada',
-                        detail: 'Se han realizado cambios en planes de trabajo',
-                        life: 5000
-                    });
-                    this.realtimeService.resetSignal('actualizado');
-                }
+                    if (planActualizado) {
+                        this.messageService.add({
+                            severity: 'info',
+                            summary: 'Actualización Detectada',
+                            detail: 'Se han realizado cambios en planes de trabajo',
+                            life: 5000
+                        });
+                        this.realtimeService.resetSignal('actualizado');
+                    }
 
-                // Solo recargar plantillas si hay una seleccionada
-                if (this.plantillaSeleccionada) {
-                    this.loadPlantillas();
-                }
-            });
-        }
-    });
-}
+                    this.loadPlantillas(); // Recargar plantillas por si afectan a alguna
+                });
+            }
+        });
+    }
 
     ngOnInit(): void {
         this.loadPlantillas();

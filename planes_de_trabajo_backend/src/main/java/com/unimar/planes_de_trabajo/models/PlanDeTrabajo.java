@@ -63,6 +63,10 @@ public class PlanDeTrabajo implements ModeloGenerico {
     @JsonView(Views.Detailed.class)
     private String idDirector;
 
+    @Column(name = "id_planeacion", nullable = false)
+    @JsonView(Views.Detailed.class)
+    private String idPlaneacion;
+
     @Column(name = "id_profesor", nullable = false)
     @JsonView(Views.Detailed.class)
     private String idProfesor;

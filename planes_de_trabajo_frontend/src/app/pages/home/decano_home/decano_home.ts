@@ -96,6 +96,7 @@ export class DecanoHome implements OnInit, OnDestroy {
   data = signal<ProfesorConPlan[]>([]);
   allData = signal<ProfesorConPlan[]>([]);
   cargando = signal<boolean>(false);
+  cargandoFiltros = signal<boolean>(false);
   novedadesSeleccionadas: any = null;
   displayModalNovedades = signal<boolean>(false);
   cargandoNovedades = signal<boolean>(false);
@@ -121,22 +122,17 @@ export class DecanoHome implements OnInit, OnDestroy {
   fotoPerfilUrl: string | null = null;
   profesorSeleccionado: ProfesorConPlan | null = null;
   showModalConfirmacion = false;
-  showModalConfirmacionIndividual = false;
-  showModalRechazar = false;
   showPlanViewer = false;
   planTrabajoIdViewer: string = '';
   profesorIdViewer: string = '';
   showModalEnviarPlaneacion = false;
   cargandoEnvioPlaneacion = false;
-  cargandoAprobacion = false;
-  planAprobandoId: string | null = null;
-  profesorParaAprobar: ProfesorConPlan | null = null;
-  profesorParaRechazar: ProfesorConPlan | null = null;
   showModalEnviarVicerrectoria = false;
   cargandoEnvioVicerrectoria = false;
   mostrarModalObservacionesVicerrectoria = false;
   observacionesVicerrectoria = '';
   profesorSeleccionadoParaObservaciones: ProfesorConPlan | null = null;
+  cargandoAprobacion = false;
 
   totalHoras = 40;
   porcentajeAsignado = 100;
@@ -285,7 +281,14 @@ export class DecanoHome implements OnInit, OnDestroy {
         )
       )
       .subscribe({
-        next: ({ campo, valor }) => this.aplicarFiltros(),
+        next: ({ campo, valor }) => {
+          this.cargandoFiltros.set(true);
+          // Usar setTimeout para permitir que el UI se actualice
+          setTimeout(() => {
+            this.aplicarFiltros();
+            this.cargandoFiltros.set(false);
+          }, 50);
+        },
       });
   }
 
@@ -400,7 +403,8 @@ export class DecanoHome implements OnInit, OnDestroy {
           p.planDeTrabajo?.estado === 'Rechazado por Decanatura'
         );
         this.allData.set(profesoresConPlanAprobadoPorDirectorORechazados);
-        this.data.set(profesoresConPlanAprobadoPorDirectorORechazados);
+        // No mostrar datos hasta que se seleccione un programa
+        this.data.set([]);
         this.cargando.set(false);
       },
       error: (error) => {
@@ -629,8 +633,6 @@ export class DecanoHome implements OnInit, OnDestroy {
         }
       });
     } else {
-      this.profesorParaRechazar = this.profesorSeleccionadoParaObservaciones;
-      this.showModalRechazar = true;
       this.cerrarModalObservacionesVicerrectoria();
     }
   }
@@ -722,16 +724,39 @@ export class DecanoHome implements OnInit, OnDestroy {
   }
 
   aplicarFiltroTexto(campo: CampoFiltro, valor: string): void {
+    // Actualizar filtros inmediatamente
     this.filtros.update((f) => ({ ...f, [campo]: valor }));
-    this.searchSubject.next({ campo, valor });
+    
+    // Para el campo programa, aplicar filtro inmediatamente sin debounce
+    if (campo === 'programa') {
+      this.cargandoFiltros.set(true);
+      setTimeout(() => {
+        this.aplicarFiltros();
+        this.cargandoFiltros.set(false);
+      }, 50);
+    } else {
+      // Para otros campos, usar debounce
+      setTimeout(() => {
+        this.searchSubject.next({ campo, valor });
+      }, 0);
+    }
   }
 
   private aplicarFiltros(): void {
-    let datos = this.allData();
     const filtrosActuales = this.filtros();
-    if (filtrosActuales.programa) {
-      datos = datos.filter((p) => p.programa === filtrosActuales.programa);
+    
+    // Si no hay programa seleccionado, no mostrar datos
+    if (!filtrosActuales.programa) {
+      this.data.set([]);
+      return;
     }
+    
+    let datos = this.allData();
+    
+    // Filtrar por programa
+    datos = datos.filter((p) => p.programa === filtrosActuales.programa);
+    
+    // Filtrar por nombres
     if (filtrosActuales.nombres.trim()) {
       const nombreBusqueda = filtrosActuales.nombres.toLowerCase().trim();
       datos = datos.filter(
@@ -740,10 +765,13 @@ export class DecanoHome implements OnInit, OnDestroy {
           p.apellidos.toLowerCase().includes(nombreBusqueda)
       );
     }
+    
+    // Filtrar por identificación
     if (filtrosActuales.numIdentificacion.trim()) {
       const cedulaBusqueda = filtrosActuales.numIdentificacion.trim();
       datos = datos.filter((p) => p.documento.includes(cedulaBusqueda));
     }
+    
     this.data.set(datos);
   }
 
@@ -766,14 +794,19 @@ export class DecanoHome implements OnInit, OnDestroy {
   }
 
   limpiarFiltros(): void {
+    this.cargandoFiltros.set(true);
     this.filtros.set({
       programa: '',
       nombres: '',
       numIdentificacion: '',
     });
     this.onlyNumbers.set(true);
-    this.data.set(this.allData());
     this.profesorSeleccionado = null;
+    // Usar setTimeout para asegurar que los filtros se actualicen primero
+    setTimeout(() => {
+      this.aplicarFiltros();
+      this.cargandoFiltros.set(false);
+    }, 50);
   }
 
   seleccionarProfesor(profesor: ProfesorConPlan): void {
@@ -801,70 +834,7 @@ export class DecanoHome implements OnInit, OnDestroy {
     this.showPlanViewer = true;
   }
 
-  onCerrarPlanViewer(): void {
-    this.showPlanViewer = false;
-    this.planTrabajoIdViewer = '';
-    this.profesorIdViewer = '';
-  }
-
-  getEstadoSeverity(estado: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
-    const estadoLower = estado?.toLowerCase() || '';
-
-    if (estadoLower === 'aprobado') {
-      return 'success';
-    }
-    if (estadoLower.includes('esperando') || estadoLower === 'pendiente') {
-      return 'warn';
-    }
-    if (estadoLower === 'rechazado') {
-      return 'danger';
-    }
-    return 'info';
-  }
-
-  get puedeAprobar(): boolean {
-    return this.profesoresPendientes.length > 0;
-  }
-
-  get mensajeTablaVacia(): string {
-    const filtrosActuales = this.filtros();
-    if (
-      filtrosActuales.programa ||
-      filtrosActuales.nombres ||
-      filtrosActuales.numIdentificacion
-    ) {
-      return 'No se encontraron resultados con los filtros aplicados';
-    }
-    return 'No hay planes de trabajo para mostrar';
-  }
-
-  onAprobarClick(): void {
-    this.showModalConfirmacion = true;
-  }
-
-  onAprobarIndividual(profesor: ProfesorConPlan): void {
-    this.profesorParaAprobar = profesor;
-    this.showModalConfirmacionIndividual = true;
-  }
-
-  onRechazarIndividual(profesor: ProfesorConPlan): void {
-    this.profesorParaRechazar = profesor;
-    this.showModalRechazar = true;
-  }
-
-  onConfirmarAprobar(): void {
-    this.showModalConfirmacion = false;
-    this.aprobarPlanesMasivamente();
-  }
-
-  onConfirmarAprobarIndividual(): void {
-    this.showModalConfirmacionIndividual = false;
-    if (this.profesorParaAprobar) {
-      this.aprobarPlanIndividual(this.profesorParaAprobar);
-    }
-  }
-
-  onEstadoPlanCambiado(nuevoEstado: string): void {
+    onEstadoPlanCambiado(nuevoEstado: string): void {
     if (this.profesorIdViewer) {
       const data = this.data();
       const index = data.findIndex(p => p.numIdentificacion === this.profesorIdViewer);
@@ -902,281 +872,52 @@ export class DecanoHome implements OnInit, OnDestroy {
     }
   }
 
-  onConfirmarRechazar(motivo: string): void {
-    this.showModalRechazar = false;
-    if (this.profesorParaRechazar) {
-      this.rechazarPlanIndividual(this.profesorParaRechazar, motivo);
+  onCerrarPlanViewer(): void {
+    this.showPlanViewer = false;
+    this.planTrabajoIdViewer = '';
+    this.profesorIdViewer = '';
+  }
+
+    get puedeAprobar(): boolean {
+    return this.profesoresPendientes.length > 0;
+  }
+
+  getEstadoSeverity(estado: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
+    const estadoLower = estado?.toLowerCase() || '';
+
+    if (estadoLower === 'aprobado') {
+      return 'success';
     }
-  }
-
-  onCancelarConfirmacion(): void {
-    this.showModalConfirmacion = false;
-  }
-
-  onCancelarConfirmacionIndividual(): void {
-    this.showModalConfirmacionIndividual = false;
-    this.profesorParaAprobar = null;
-  }
-
-  private aprobarPlanIndividual(profesor: ProfesorConPlan): void {
-    if (!profesor.planDeTrabajo) {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'El profesor no tiene un plan de trabajo para aprobar',
-      });
-      return;
+    if (estadoLower.includes('esperando') || estadoLower === 'pendiente') {
+      return 'warn';
     }
-    this.planAprobandoId = profesor.id;
-    this.firmaService.firmarComoDecano(profesor.planDeTrabajo.id).subscribe({
-      next: () => {
-        this.auditoriaService.create({
-          idPt: profesor.planDeTrabajo!.id,
-          tipoCambio: 'Aprobado',
-          accion: `Aprobado por Decano ${this.nombreDecano}`
-        }).subscribe();
-
-        // No enviar notificación aquí - solo se envía cuando se hace clic en "Enviar a sistemas"
-
-        this.planAprobandoId = null;
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Plan Aprobado',
-          detail: `Plan de trabajo de ${profesor.nombres} ${profesor.apellidos} aprobado exitosamente`,
-        });
-        const decano = this.profesorDecano();
-        if (decano) {
-          this.cargarProfesoresFacultad(decano.facultad);
-        }
-        this.profesorParaAprobar = null;
-        this.profesorSeleccionado = null;
-      },
-      error: (error) => {
-        this.planAprobandoId = null;
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error al aprobar',
-          detail: `No se pudo aprobar el plan de ${profesor.nombres} ${profesor.apellidos}`,
-        });
-        this.profesorParaAprobar = null;
-      },
-    });
+    if (estadoLower === 'rechazado') {
+      return 'danger';
+    }
+    return 'info';
   }
 
-  private enviarNotificacionAprobacion(profesor: ProfesorConPlan): void {
-    const decano = this.profesorDecano();
-    if (!decano || !profesor.planDeTrabajo) {
-      return;
-    }
-
-   
-
-    this.profesorService.getByPrograma(profesor.programa).subscribe({
-      next: (profesores) => {
-        const director = profesores.find(p => p.cargo === 'DIRECTOR DE PROGRAMA');
-        
-       
-
-        this.notificacionesService.notificarAprobacionDecano({
-          emailDecano: decano.numIdentificacion,
-          nombreDecano: `${decano.nombres} ${decano.apellidos}`,
-          emailProfesor: profesor.numIdentificacion,
-          nombreProfesor: `${profesor.nombres} ${profesor.apellidos}`,
-          emailDirector: director?.numIdentificacion,
-          nombreDirector: director ? `${director.nombres} ${director.apellidos}` : undefined,
-          programa: profesor.programa,
-          periodo: profesor.planDeTrabajo!.periodo,
-          anio: profesor.planDeTrabajo!.anio
-        }).subscribe({
-          next: (response) => {},
-          error: (err) => {}
-        });
-      },
-      error: (err) => {}
-    });
+    onAprobarClick(): void {
+    this.showModalConfirmacion = true;
   }
 
-  private rechazarPlanIndividual(
-    profesor: ProfesorConPlan,
-    motivo: string
-  ): void {
-    if (!profesor.planDeTrabajo) {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'El profesor no tiene un plan de trabajo para rechazar',
-      });
-      return;
+  get mensajeTablaVacia(): string {
+    const filtrosActuales = this.filtros();
+    
+    // Si no hay programa seleccionado
+    if (!filtrosActuales.programa) {
+      return 'Selecciona un programa para ver los planes de trabajo';
     }
-    if (!motivo || motivo.trim() === '') {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Debe proporcionar un motivo de rechazo',
-      });
-      return;
+    
+    // Si hay filtros aplicados pero no hay resultados
+    if (
+      filtrosActuales.nombres ||
+      filtrosActuales.numIdentificacion
+    ) {
+      return 'No se encontraron resultados con los filtros aplicados';
     }
-
-    this.firmaService
-      .rechazarPlanDeTrabajo(profesor.planDeTrabajo.id, motivo)
-      .subscribe({
-        next: (planActualizado) => {
-          this.auditoriaService.create({
-            idPt: profesor.planDeTrabajo!.id,
-            tipoCambio: 'Rechazado',
-            accion: `Rechazado por Decano ${this.nombreDecano}`
-          }).subscribe();
-
-          this.enviarNotificacionRechazo(profesor, motivo);
-
-          this.messageService.add({
-            severity: 'warn',
-            summary: 'Plan Rechazado',
-            detail: `El plan de trabajo de ${profesor.nombres} ${profesor.apellidos} ha sido rechazado`,
-          });
-
-          this.actualizarEstadoLocalConRechazo(profesor, planActualizado);
-
-          this.profesorParaRechazar = null;
-
-          if (
-            this.profesorSeleccionado?.numIdentificacion ===
-            profesor.numIdentificacion
-          ) {
-            const estadoInfo = this.calcularEstado(planActualizado);
-            this.profesorSeleccionado = {
-              ...this.profesorSeleccionado,
-              estado: estadoInfo.estado,
-              severityEstado: estadoInfo.severity,
-              planDeTrabajo: planActualizado,
-            };
-          }
-        },
-        error: (error) => {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error al rechazar',
-            detail: `No se pudo rechazar el plan de ${profesor.nombres} ${profesor.apellidos}`,
-          });
-          this.profesorParaRechazar = null;
-        },
-      });
-  }
-
-  private enviarNotificacionRechazo(profesor: ProfesorConPlan, motivo: string): void {
-    const decano = this.profesorDecano();
-    if (!decano || !profesor.planDeTrabajo) return;
-
-    this.profesorService.getByPrograma(profesor.programa).subscribe({
-      next: (profesores) => {
-        const director = profesores.find(p => p.cargo === 'DIRECTOR DE PROGRAMA');
-        if (director) {
-          this.notificacionesService.notificarRechazoDecano({
-            emailProfesor: profesor.numIdentificacion,
-            nombreProfesor: `${profesor.nombres} ${profesor.apellidos}`,
-            emailDirector: director.numIdentificacion,
-            nombreDirector: `${director.nombres} ${director.apellidos}`,
-            emailDecano: decano.numIdentificacion,
-            nombreDecano: `${decano.nombres} ${decano.apellidos}`,
-            programa: profesor.programa,
-            periodo: profesor.planDeTrabajo!.periodo,
-            anio: profesor.planDeTrabajo!.anio,
-            motivo: motivo
-          }).subscribe({
-            error: (err) => {}
-          });
-        }
-      }
-    });
-  }
-
-  private actualizarEstadoLocalConRechazo(
-    profesor: ProfesorConPlan,
-    planActualizado: PlanDeTrabajoModel
-  ): void {
-    const datosActuales = this.data();
-    const datosCompletos = this.allData();
-
-    const actualizarEnArray = (array: ProfesorConPlan[]): ProfesorConPlan[] => {
-      return array.map((p) => {
-        if (p.numIdentificacion === profesor.numIdentificacion) {
-          const estadoInfo = this.calcularEstado(planActualizado);
-          const profesorActualizado: ProfesorConPlan = {
-            ...p,
-            estado: estadoInfo.estado,
-            severityEstado: estadoInfo.severity,
-            planDeTrabajo: planActualizado,
-          };
-          return profesorActualizado;
-        }
-        return p;
-      });
-    };
-
-    this.data.set(actualizarEnArray(datosActuales));
-    this.allData.set(actualizarEnArray(datosCompletos));
-  }
-
-  private aprobarPlanesMasivamente(): void {
-    const planesParaAprobar = this.profesoresPendientes
-      .filter(p => p.planDeTrabajo)
-      .map(p => p.planDeTrabajo as PlanDeTrabajoModel);
-    if (planesParaAprobar.length === 0) {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Sin planes',
-        detail: 'No hay planes de trabajo pendientes de aprobación',
-      });
-      return;
-    }
-    this.cargandoAprobacion = true;
-    let planesAprobados = 0;
-    let planesConError = 0;
-    planesParaAprobar.forEach((plan) => {
-      this.firmaService.firmarComoDecano(plan.id).subscribe({
-        next: () => {
-          planesAprobados++;
-
-          this.auditoriaService.create({
-            idPt: plan.id,
-            tipoCambio: 'Aprobado',
-            accion: `Aprobado por Decano ${this.nombreDecano}`
-          }).subscribe();
-
-          if (planesAprobados + planesConError === planesParaAprobar.length) {
-            this.finalizarAprobacionMasiva(planesAprobados, planesConError);
-          }
-        },
-        error: (error) => {
-          planesConError++;
-
-          if (planesAprobados + planesConError === planesParaAprobar.length) {
-            this.finalizarAprobacionMasiva(planesAprobados, planesConError);
-          }
-        },
-      });
-    });
-  }
-
-  private finalizarAprobacionMasiva(aprobados: number, errores: number): void {
-    this.cargandoAprobacion = false;
-    if (errores === 0) {
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Aprobación Exitosa',
-        detail: `Se aprobaron ${aprobados} planes de trabajo correctamente`,
-      });
-    } else {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Aprobación Parcial',
-        detail: `Se aprobaron ${aprobados} planes. ${errores} tuvieron errores.`,
-      });
-    }
-    const decano = this.profesorDecano();
-    if (decano) {
-      this.cargarProfesoresFacultad(decano.facultad);
-    }
+    
+    return 'No hay planes de trabajo para mostrar';
   }
 
   async onExportarPTClick(): Promise<void> {

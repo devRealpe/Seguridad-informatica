@@ -943,4 +943,151 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     this.mostrarModalProductos = false;
     this.productosSeleccionados = [];
   }
+
+  // Funcionalidad de aprobación y rechazo
+  mostrarModalConfirmacionAprobar = false;
+  mostrarModalRechazar = false;
+  cargandoAprobacion = false;
+  motivoRechazo = '';
+
+  aprobarPlanConObservaciones(): void {
+    if (!this.planDeTrabajo) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se puede aprobar, el plan no está cargado'
+      });
+      return;
+    }
+
+    this.mostrarModalConfirmacionAprobar = true;
+  }
+
+  rechazarPlanConObservaciones(): void {
+    if (!this.planDeTrabajo) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se puede rechazar, el plan no está cargado'
+      });
+      return;
+    }
+
+    this.motivoRechazo = '';
+    this.mostrarModalRechazar = true;
+  }
+
+  onConfirmarAprobarPlan(): void {
+    if (!this.planDeTrabajo) return;
+
+    this.cargandoAprobacion = true;
+    this.firmaService.firmarComoDecano(this.planDeTrabajoId).subscribe({
+      next: () => {
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Plan Aprobado',
+          detail: 'El plan de trabajo ha sido aprobado exitosamente'
+        });
+
+        this.mostrarModalConfirmacionAprobar = false;
+        this.cargandoAprobacion = false;
+
+        if (this.planDeTrabajo) {
+          this.planDeTrabajo.firmaDecano = true;
+          this.planDeTrabajo.estado = 'Aprobado por Decanatura';
+        }
+
+        this.cargarEstadoFirmas();
+        this.estadoCambiado.emit('Aprobado');
+      },
+      error: (error) => {
+        this.cargandoAprobacion = false;
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error al aprobar',
+          detail: 'No se pudo aprobar el plan de trabajo'
+        });
+      }
+    });
+  }
+
+  onConfirmarRechazarPlan(): void {
+    if (!this.planDeTrabajo) return;
+
+    if (!this.motivoRechazo || this.motivoRechazo.trim() === '') {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Debe proporcionar un motivo de rechazo'
+      });
+      return;
+    }
+
+    this.cargandoAprobacion = true;
+    this.firmaService.rechazarPlanDeTrabajo(this.planDeTrabajoId, this.motivoRechazo.trim()).subscribe({
+      next: (planActualizado) => {
+        this.messageService.add({
+          severity: 'warn',
+          summary: 'Plan Rechazado',
+          detail: 'El plan de trabajo ha sido rechazado'
+        });
+
+        this.mostrarModalRechazar = false;
+        this.cargandoAprobacion = false;
+        this.motivoRechazo = '';
+
+        if (this.planDeTrabajo) {
+          this.planDeTrabajo = planActualizado;
+        }
+
+        this.cargarEstadoFirmas();
+        this.estadoCambiado.emit('Rechazado');
+      },
+      error: (error) => {
+        this.cargandoAprobacion = false;
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error al rechazar',
+          detail: 'No se pudo rechazar el plan de trabajo'
+        });
+      }
+    });
+  }
+
+  onCancelarModalAprobar(): void {
+    this.mostrarModalConfirmacionAprobar = false;
+  }
+
+  onCancelarModalRechazar(): void {
+    this.mostrarModalRechazar = false;
+    this.motivoRechazo = '';
+  }
+
+  puedeAprobarRechazar(): boolean {
+    // El decano puede aprobar o rechazar si:
+    // 1. Es el rol de DECANO
+    // 2. El plan no está ya aprobado o rechazado por decanatura (no tiene firma de decano)
+    // 3. El plan no está rechazado por el profesor
+    if (this.rolUsuario !== 'DECANO') {
+      return false;
+    }
+
+    if (!this.planDeTrabajo) {
+      return false;
+    }
+
+    // No permitir si ya tiene firma del decano
+    if (this.planDeTrabajo.firmaDecano === true) {
+      return false;
+    }
+
+    // No permitir si fue rechazado por el profesor
+    if (this.planDeTrabajo.estado === 'RECHAZADO') {
+      return false;
+    }
+
+    // Permitir en estados: Activo, Revisado, o cualquier estado que no sea final
+    const estadosNoPermitidos = ['Aprobado por Decanatura', 'Rechazado por Decanatura'];
+    return !estadosNoPermitidos.includes(this.planDeTrabajo.estado || '');
+  }
 }

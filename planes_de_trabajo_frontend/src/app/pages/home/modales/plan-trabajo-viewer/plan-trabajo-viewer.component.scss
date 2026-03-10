@@ -1,7 +1,4 @@
 ::ng-deep .p-dialog {
-  .p-dialog-footer {
-    display: none !important;
-  }
 
   .p-dialog-header {
     border-top-left-radius: 0.7rem !important;
@@ -12,6 +9,60 @@
   .p-dialog-content {
     border-bottom-left-radius: 1rem !important;
     border-bottom-right-radius: 1rem !important;
+  }
+}
+
+::ng-deep .plan-viewer-dialog {
+  .p-dialog-footer {
+    display: none !important;
+  }
+}
+
+::ng-deep .confirmacion-aprobar-dialog {
+  .p-dialog-footer {
+    display: block !important;
+  }
+  .p-dialog-header-close-icon {
+    display: none !important;
+  }
+}
+
+::ng-deep .rechazo-dialog {
+  .p-dialog-footer {
+    display: block !important;
+  }
+  .p-dialog-header-close-icon {
+    display: none !important;
+  }
+}
+
+::ng-deep .motivo-rechazo-dialog {
+  .p-dialog-footer {
+    display: none !important;
+  }
+  .p-dialog-header-close-icon {
+    display: none !important;
+  }
+}
+
+::ng-deep .confirmacion-cambio-dialog {
+  .p-dialog-footer {
+    display: none !important;
+  }
+  .p-dialog-header-close-icon {
+    display: none !important;
+  }
+}
+
+::ng-deep .confirmacion-aprobar-dialog {
+  .p-dialog-header-close-icon {
+    display: none !important;
+  }
+}
+
+::ng-deep .rechazo-dialog {
+  .p-dialog-header-close-icon {
+    display: none !important;
   }
 }
 

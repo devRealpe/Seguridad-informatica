@@ -30,7 +30,8 @@ import { InvestigacioneService } from 'apps/planes_de_trabajo/src/app/core/servi
 import { Investigaciones } from 'apps/planes_de_trabajo/src/app/core/models/investigaciones.model';
 import { Message } from 'primeng/message';
 import { MessageService } from 'primeng/api';
-import { delay } from 'rxjs';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { NotificacionesPlanTrabajoService } from '../../../../core/services/notificaciones-plan-trabajo.service';
 
 @Component({
@@ -84,7 +85,6 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   mostrarModalConfirmacionCambio = false;
   descripcionCambio = '';
 
-  // Propiedades para mostrar desglose de horas
   horasCursos = 0;
   horasNormales = 0;
   horasInvestigacion = 0;
@@ -102,6 +102,21 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       firmaDecano: false
     };
 
+  // ─── Debounce para evitar toasts duplicados ───────────────────────────────
+  private toastSuccessSubject = new Subject<string>();
+  private toastSuccessSubscription = this.toastSuccessSubject.pipe(
+    debounceTime(600),
+    distinctUntilChanged()
+  ).subscribe(detail => {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Éxito',
+      detail,
+      life: 3000
+    });
+  });
+  // ─────────────────────────────────────────────────────────────────────────
+
   constructor(
     private seccionService: SeccionService,
     private planDeTrabajoService: PlanDeTrabajoService,
@@ -115,6 +130,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   ) { }
 
   @ViewChild('planContent') planContent?: ElementRef;
+  @Output() estadoCambiado = new EventEmitter<string>();
 
   ngAfterViewInit(): void {
     const seccionObjetivo = localStorage.getItem('seccionObjetivo');
@@ -156,6 +172,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.toastSuccessSubscription.unsubscribe();
   }
 
   cargarPlanDeTrabajo() {
@@ -202,8 +219,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
               firmaDecano: estado.firmaDecano
             };
           },
-          error: (error) => {
-          }
+          error: (error) => { }
         });
     }
   }
@@ -218,27 +234,20 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
           this.calcularTotales();
         }
       },
-      error: (error) => {
-      }
+      error: (error) => { }
     });
 
     if (planDeTrabajo.idDirector) {
       this.profesorService.getById(planDeTrabajo.idDirector).subscribe({
-        next: (director) => {
-          this.directorInfo = director;
-        },
-        error: (error) => {
-        }
+        next: (director) => { this.directorInfo = director; },
+        error: (error) => { }
       });
     }
 
     if (planDeTrabajo.idDecano) {
       this.profesorService.getById(planDeTrabajo.idDecano).subscribe({
-        next: (decano) => {
-          this.decanoInfo = decano;
-        },
-        error: (error) => {
-        }
+        next: (decano) => { this.decanoInfo = decano; },
+        error: (error) => { }
       });
     }
   }
@@ -273,8 +282,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
           this.seccionesPadres = secciones;
           this.cargarInvestigaciones();
         },
-        error: (error: any) => {
-        }
+        error: (error: any) => { }
       });
   }
 
@@ -331,13 +339,11 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
           this.asignaturas = asignaturas;
           this.calcularTotales();
         },
-        error: (error: any) => {
-        }
+        error: (error: any) => { }
       });
   }
 
   calcularTotales() {
-    // Calcular horas base del servidor
     let horasActividades = this.actividadesPlanDeTrabajo.reduce((total, actividad) => {
       return total + (actividad.horas || 0);
     }, 0);
@@ -353,9 +359,8 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       }, 0);
     });
 
-    // Aplicar cambios pendientes
+    // Aplicar cambios pendientes del objeto cambiosHoras
     Object.entries(this.cambiosHoras).forEach(([actividadId, nuevoValor]) => {
-      // Buscar en actividades
       const actividad = this.actividadesPlanDeTrabajo.find(a => a.actividades?.id === actividadId);
       if (actividad) {
         const diferencia = (nuevoValor || 0) - (actividad.horas || 0);
@@ -363,7 +368,6 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Buscar en asignaturas
       const asignatura = this.asignaturas.find(a => a.codAsignatura === actividadId);
       if (asignatura) {
         const diferencia = (nuevoValor || 0) - (asignatura.horasPresenciales || 0);
@@ -371,7 +375,6 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Buscar en investigaciones
       for (const [seccionId, investigaciones] of this.investigacionesPorSeccion) {
         const inv = investigaciones.find(i => i.id === actividadId);
         if (inv) {
@@ -382,19 +385,19 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Guardar los valores en las propiedades de clase
     this.horasCursos = Math.max(0, horasCursos);
     this.horasNormales = Math.max(0, horasActividades);
     this.horasInvestigacion = Math.max(0, horasInvestigacion);
-    
-    this.totalHorasAsignadas = this.horasCursos + this.horasNormales + this.horasInvestigacion;
 
+    this.totalHorasAsignadas = this.horasCursos + this.horasNormales + this.horasInvestigacion;
     this.porcentajeCompletado = Math.round((this.totalHorasAsignadas / this.totalHorasDisponibles) * 100);
   }
 
+  // ─── Horas disponibles actuales (reactivo a cambiosHoras) ─────────────────
   calcularHorasDisponibles(): number {
     return this.horasTotales - this.totalHorasAsignadas;
   }
+  // ─────────────────────────────────────────────────────────────────────────
 
   getActividadesPorSeccion(seccionHijo: SeccionHijo): ActividadPlanDeTrabajo[] {
     if (!seccionHijo.actividades || !Array.isArray(seccionHijo.actividades)) {
@@ -608,9 +611,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     if (!productos || productos.length === 0) {
       return [];
     }
-    const nombres = productos
-      .map(p => p.nombre)
-      .filter(nombre => nombre);
+    const nombres = productos.map(p => p.nombre).filter(nombre => nombre);
     return nombres.length > 0 ? nombres : [];
   }
 
@@ -682,7 +683,6 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     if (this.puedeVerMotivoRechazoDecano()) return this.getNombreDecano();
     return 'No especificado';
   }
-  @Output() estadoCambiado = new EventEmitter<string>();
 
   marcarComoRevisado(): void {
     if (!this.planDeTrabajoId) return;
@@ -710,17 +710,19 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ─── Control de cambios de horas ─────────────────────────────────────────
   cambiosHoras: { [id: string]: number } = {};
   idActividadEditando: string | null = null;
   mostrarModalProductos = false;
   productosSeleccionados: any[] = [];
-  ultimoIdActividadCambiada: string | null = null;
 
   onHorasChange(id: string, horas: number): void {
     if (horas < 0) return;
 
+    // Buscar horas originales en actividades
     let horasOriginales: number | null = this.getHorasAsignadasActividad(id);
 
+    // Si no está en actividades, buscar en investigaciones
     if (horasOriginales === null) {
       for (const [seccionId, inversiones] of this.investigacionesPorSeccion) {
         const inv = inversiones.find(i => i.id === id);
@@ -731,21 +733,28 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Calcular si el nuevo valor de horas excede las horas disponibles
-    const diferencia = (horas || 0) - (horasOriginales || 0);
-    const horasDisponiblesActuales = this.calcularHorasDisponibles() + (horasOriginales || 0);
+    // Calcular horas disponibles ANTES de aplicar el cambio
+    // (sin contar el cambio actual del mismo id que ya podría estar en cambiosHoras)
+    const cambiosPreviosSinEsteId = { ...this.cambiosHoras };
+    delete cambiosPreviosSinEsteId[id];
 
-    // Validar que no se asignen más horas de las máximas
-    if (diferencia > 0 && diferencia > horasDisponiblesActuales) {
+    // Recalcular el total con los cambios previos pero sin el id actual
+    let horasAsignadasConCambiosPrevios = this.calcularTotalConCambios(cambiosPreviosSinEsteId);
+    const horasDisponiblesReales = this.horasTotales - horasAsignadasConCambiosPrevios;
+
+    // Validar que el nuevo valor no supere las horas disponibles
+    const diferencia = (horas || 0) - (horasOriginales || 0);
+    if (diferencia > 0 && diferencia > horasDisponiblesReales) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Advertencia',
-        detail: 'No se puede asignar mas horas de las maximas',
+        detail: 'No se puede asignar más horas de las disponibles',
         life: 3000
       });
       return;
     }
 
+    // Actualizar o limpiar cambiosHoras
     if (horasOriginales !== null && horas === horasOriginales) {
       delete this.cambiosHoras[id];
       this.idActividadEditando = null;
@@ -755,24 +764,62 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     } else {
       this.cambiosHoras[id] = horas;
       this.idActividadEditando = id;
-      
-      // Mostrar mensaje de éxito solo si no se mostró uno reciente para este ID
-      if (this.ultimoIdActividadCambiada !== id) {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Actividad actualizada exitosamente',
-          life: 3000
-        });
-        this.ultimoIdActividadCambiada = id;
-      }
+      // ← Toast debounced: sólo se emite uno cada 600ms por mensaje idéntico
+      this.toastSuccessSubject.next('Actividad actualizada exitosamente');
     }
 
-    // Recalcular totales inmediatamente
+    // Recalcular totales para reflejar el nuevo valor en el contador de horas
     this.calcularTotales();
   }
 
+  /**
+   * Calcula el total de horas asignadas aplicando un conjunto de cambios dado.
+   * Usado internamente para validar si el nuevo valor excede el límite.
+   */
+  private calcularTotalConCambios(cambios: { [id: string]: number }): number {
+    let horasActividades = this.actividadesPlanDeTrabajo.reduce((total, actividad) => {
+      return total + (actividad.horas || 0);
+    }, 0);
+
+    let horasCursos = this.asignaturas.reduce((total, asignatura) => {
+      return total + (asignatura.horasPresenciales || 0);
+    }, 0);
+
+    let horasInvestigacion = 0;
+    this.investigacionesPorSeccion.forEach((investigaciones) => {
+      horasInvestigacion += investigaciones.reduce((total, inv) => {
+        return total + (inv.horas || 0);
+      }, 0);
+    });
+
+    Object.entries(cambios).forEach(([actividadId, nuevoValor]) => {
+      const actividad = this.actividadesPlanDeTrabajo.find(a => a.actividades?.id === actividadId);
+      if (actividad) {
+        horasActividades += (nuevoValor || 0) - (actividad.horas || 0);
+        return;
+      }
+
+      const asignatura = this.asignaturas.find(a => a.codAsignatura === actividadId);
+      if (asignatura) {
+        horasCursos += (nuevoValor || 0) - (asignatura.horasPresenciales || 0);
+        return;
+      }
+
+      for (const [, investigaciones] of this.investigacionesPorSeccion) {
+        const inv = investigaciones.find(i => i.id === actividadId);
+        if (inv) {
+          horasInvestigacion += (nuevoValor || 0) - (inv.horas || 0);
+          return;
+        }
+      }
+    });
+
+    return Math.max(0, horasActividades) + Math.max(0, horasCursos) + Math.max(0, horasInvestigacion);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   isInputDisabled(id: string): boolean {
+    if (!this.modoEdicion) return true;
     if (this.rolUsuario !== 'DECANO') return true;
     if (this.planDeTrabajo?.estado !== 'Activo') return true;
     if (this.planDeTrabajo?.firmaDecano === true) return true;
@@ -781,12 +828,13 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   }
 
   isInputDisabledInv(): boolean {
+    if (!this.modoEdicion) return true;
     if (this.rolUsuario !== 'DECANO') return true;
     if (this.planDeTrabajo?.estado !== 'Activo') return true;
     if (this.planDeTrabajo?.firmaDecano === true) return true;
-    if (this.modoResumido) return true;
     return false;
   }
+
   setMinHoras(id: string): number {
     if (this.getTotalHorasSolicitadas() < 0) {
       return this.getHorasAsignadasActividad(id) || 0;
@@ -795,20 +843,10 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   }
 
   setMaxHoras(id: string): number {
-
     if (this.hayCambiosConfirmados(id)) {
       const horasActuales = this.getHorasAsignadasActividad(id);
       return horasActuales !== null ? horasActuales : 0;
     }
-
-    if (this.idActividadEditando === id) {
-      return 40;
-    }
-
-    if (this.cambiosHoras.hasOwnProperty(id)) {
-      return 40;
-    }
-
     return 40;
   }
 
@@ -846,13 +884,11 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       }
     }
     return false;
-
   }
 
   hayCambiosConfirmados(idActual: string): boolean {
     return Object.keys(this.cambiosHoras).some(id => id !== idActual);
   }
-
 
   hasCambios(): boolean {
     return Object.keys(this.cambiosHoras).length > 0;
@@ -900,7 +936,6 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     }
 
     this.descripcionCambio = '';
-    // Asegurar que los totales estén actualizados antes de mostrar el modal
     this.calcularTotales();
     this.mostrarModalConfirmacionCambio = true;
   }
@@ -934,20 +969,9 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
 
       if (horasOriginales !== null) {
         if (horasNuevas > horasOriginales) {
-          if (this.esInvestigacion(id)) {
-            actividadesAumento.push(`I${id} ${horasNuevas}`);
-          } else {
-            actividadesAumento.push(`${id} ${horasNuevas}`);
-          }
+          actividadesAumento.push(`${this.esInvestigacion(id) ? 'I' : ''}${id} ${horasNuevas}`);
         } else if (horasNuevas < horasOriginales) {
-          let NhorasNuevas;
-          if (horasNuevas === null) NhorasNuevas = 0;
-          else NhorasNuevas = horasNuevas;
-          if (this.esInvestigacion(id)) {
-            actividadesDisminucion.push(`I${id} ${NhorasNuevas}`);
-          } else {
-            actividadesDisminucion.push(`${id} ${NhorasNuevas}`);
-          }
+          actividadesDisminucion.push(`${this.esInvestigacion(id) ? 'I' : ''}${id} ${horasNuevas ?? 0}`);
         }
       }
     }
@@ -965,7 +989,6 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
           detail: 'Se ha solicitado el cambio de horas a Vicerrectoría.'
         });
 
-        // Enviar notificación a vicerrectoría
         this.enviarNotificacionVicerrectoria();
 
         if (this.planDeTrabajo) {
@@ -986,7 +1009,6 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
         });
       }
     });
-
   }
 
   cancelarEnvioVicerrectoria(): void {
@@ -999,8 +1021,6 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       return;
     }
 
-
-
     this.notificacionesService.notificarEnvioVicerrectoria({
       emailDecano: this.decanoInfo.numIdentificacion,
       nombreDecano: `${this.decanoInfo.nombres} ${this.decanoInfo.apellidos}`,
@@ -1009,11 +1029,10 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       anio: this.planDeTrabajo.anio.toString(),
       cantidadPlanes: 1
     }).subscribe({
-      next: (response) => {},
-      error: (err) =>{}
+      next: (response) => { },
+      error: (err) => { }
     });
   }
-
 
   mostrarDetalleProductos(productos: any[]): void {
     this.productosSeleccionados = productos || [];
@@ -1025,7 +1044,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     this.productosSeleccionados = [];
   }
 
-  // Funcionalidad de aprobación y rechazo
+  // ─── Aprobación y rechazo ────────────────────────────────────────────────
   mostrarModalConfirmacionAprobar = false;
   mostrarModalRechazar = false;
   cargandoAprobacion = false;
@@ -1033,27 +1052,17 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
 
   aprobarPlanConObservaciones(): void {
     if (!this.planDeTrabajo) {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se puede aprobar, el plan no está cargado'
-      });
+      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se puede aprobar, el plan no está cargado' });
       return;
     }
-
     this.mostrarModalConfirmacionAprobar = true;
   }
 
   rechazarPlanConObservaciones(): void {
     if (!this.planDeTrabajo) {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'No se puede rechazar, el plan no está cargado'
-      });
+      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se puede rechazar, el plan no está cargado' });
       return;
     }
-
     this.motivoRechazo = '';
     this.mostrarModalRechazar = true;
   }
@@ -1064,12 +1073,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     this.cargandoAprobacion = true;
     this.firmaService.firmarComoDecano(this.planDeTrabajoId).subscribe({
       next: () => {
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Plan Aprobado',
-          detail: 'El plan de trabajo ha sido aprobado exitosamente'
-        });
-
+        this.messageService.add({ severity: 'success', summary: 'Plan Aprobado', detail: 'El plan de trabajo ha sido aprobado exitosamente' });
         this.mostrarModalConfirmacionAprobar = false;
         this.cargandoAprobacion = false;
 
@@ -1077,17 +1081,12 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
           this.planDeTrabajo.firmaDecano = true;
           this.planDeTrabajo.estado = 'Aprobado por Decanatura';
         }
-
         this.cargarEstadoFirmas();
         this.estadoCambiado.emit('Aprobado');
       },
       error: (error) => {
         this.cargandoAprobacion = false;
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error al aprobar',
-          detail: 'No se pudo aprobar el plan de trabajo'
-        });
+        this.messageService.add({ severity: 'error', summary: 'Error al aprobar', detail: 'No se pudo aprobar el plan de trabajo' });
       }
     });
   }
@@ -1096,23 +1095,14 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     if (!this.planDeTrabajo) return;
 
     if (!this.motivoRechazo || this.motivoRechazo.trim() === '') {
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Debe proporcionar un motivo de rechazo'
-      });
+      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Debe proporcionar un motivo de rechazo' });
       return;
     }
 
     this.cargandoAprobacion = true;
     this.firmaService.rechazarPlanDeTrabajo(this.planDeTrabajoId, this.motivoRechazo.trim()).subscribe({
       next: (planActualizado) => {
-        this.messageService.add({
-          severity: 'warn',
-          summary: 'Plan Rechazado',
-          detail: 'El plan de trabajo ha sido rechazado'
-        });
-
+        this.messageService.add({ severity: 'warn', summary: 'Plan Rechazado', detail: 'El plan de trabajo ha sido rechazado' });
         this.mostrarModalRechazar = false;
         this.cargandoAprobacion = false;
         this.motivoRechazo = '';
@@ -1120,17 +1110,12 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
         if (this.planDeTrabajo) {
           this.planDeTrabajo = planActualizado;
         }
-
         this.cargarEstadoFirmas();
         this.estadoCambiado.emit('Rechazado');
       },
       error: (error) => {
         this.cargandoAprobacion = false;
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error al rechazar',
-          detail: 'No se pudo rechazar el plan de trabajo'
-        });
+        this.messageService.add({ severity: 'error', summary: 'Error al rechazar', detail: 'No se pudo rechazar el plan de trabajo' });
       }
     });
   }
@@ -1145,30 +1130,13 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   }
 
   puedeAprobarRechazar(): boolean {
-    // El decano puede aprobar o rechazar si:
-    // 1. Es el rol de DECANO
-    // 2. El plan no está ya aprobado o rechazado por decanatura (no tiene firma de decano)
-    // 3. El plan no está rechazado por el profesor
-    if (this.rolUsuario !== 'DECANO') {
-      return false;
-    }
+    if (this.rolUsuario !== 'DECANO') return false;
+    if (!this.planDeTrabajo) return false;
+    if (this.planDeTrabajo.firmaDecano === true) return false;
+    if (this.planDeTrabajo.estado === 'RECHAZADO') return false;
 
-    if (!this.planDeTrabajo) {
-      return false;
-    }
-
-    // No permitir si ya tiene firma del decano
-    if (this.planDeTrabajo.firmaDecano === true) {
-      return false;
-    }
-
-    // No permitir si fue rechazado por el profesor
-    if (this.planDeTrabajo.estado === 'RECHAZADO') {
-      return false;
-    }
-
-    // Permitir en estados: Activo, Revisado, o cualquier estado que no sea final
     const estadosNoPermitidos = ['Aprobado por Decanatura', 'Rechazado por Decanatura'];
     return !estadosNoPermitidos.includes(this.planDeTrabajo.estado || '');
   }
+  // ─────────────────────────────────────────────────────────────────────────
 }

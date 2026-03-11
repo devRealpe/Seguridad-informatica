@@ -57,6 +57,7 @@
             severity="success"
             size="small"
             (click)="marcarComoRevisado()"
+            [style]="{ 'margin-left': '1rem' }"
           >
           </p-button>
           <p-button
@@ -72,6 +73,81 @@
         </div>
       </div>
     </div>
+
+    <!-- ► BLOQUE NUEVO: Indicador de horas disponibles (solo en modo edición) ◄ -->
+    <div
+      *ngIf="modoEdicion"
+      class="mb-4 p-3 border-round-lg"
+      [style]="{
+        background: 'var(--p-surface-0)',
+        border:
+          '2px solid ' +
+          (calcularHorasDisponibles() < 0
+            ? '#ef4444'
+            : calcularHorasDisponibles() === 0
+            ? '#10b981'
+            : 'var(--p-surface-200)'),
+        'border-radius': '8px',
+        transition: 'border-color 0.3s ease'
+      }"
+    >
+      <div class="flex align-items-center gap-3">
+        <i
+          class="pi pi-clock text-2xl"
+          [style]="{
+            color:
+              calcularHorasDisponibles() < 0
+                ? '#ef4444'
+                : calcularHorasDisponibles() === 0
+                ? '#10b981'
+                : 'var(--p-primary-600)'
+          }"
+        ></i>
+        <div class="flex-1">
+          <p
+            class="m-0 font-bold text-sm"
+            [style]="{
+              color:
+                calcularHorasDisponibles() < 0
+                  ? '#ef4444'
+                  : calcularHorasDisponibles() === 0
+                  ? '#10b981'
+                  : 'var(--p-text-color)'
+            }"
+          >
+            Horas disponibles:
+            <span class="text-lg ml-1">{{ calcularHorasDisponibles() }}</span>
+            <span class="font-normal ml-1">/ {{ horasTotales }}</span>
+          </p>
+          <p
+            class="m-0 mt-1 text-xs"
+            [style]="{ color: 'var(--p-text-muted)' }"
+          >
+            Cursos: <strong>{{ horasCursos }}h</strong> &nbsp;|&nbsp;
+            Actividades: <strong>{{ horasNormales }}h</strong> &nbsp;|&nbsp;
+            Investigación: <strong>{{ horasInvestigacion }}h</strong>
+          </p>
+        </div>
+        <p-tag
+          [value]="
+            calcularHorasDisponibles() === 0
+              ? 'Completo'
+              : calcularHorasDisponibles() > 0
+              ? 'Incompleto'
+              : 'Excedido'
+          "
+          [severity]="
+            calcularHorasDisponibles() === 0
+              ? 'success'
+              : calcularHorasDisponibles() > 0
+              ? 'warn'
+              : 'danger'
+          "
+          [rounded]="true"
+        ></p-tag>
+      </div>
+    </div>
+    <!-- ► FIN BLOQUE NUEVO ◄ -->
 
     <div
       *ngIf="!tieneSeccionesVisibles() && !loading"
@@ -858,7 +934,7 @@
               class="stat-value font-bold"
               [style]="{ color: 'var(--p-text-color)' }"
             >
-              {{ totalHorasDisponibles }} horas
+              {{ calcularHorasDisponibles() }} horas
             </span>
           </div>
           <div class="stat-item">

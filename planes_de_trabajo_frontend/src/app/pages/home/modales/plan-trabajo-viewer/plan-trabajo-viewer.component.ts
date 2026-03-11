@@ -742,13 +742,13 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     let horasAsignadasConCambiosPrevios = this.calcularTotalConCambios(cambiosPreviosSinEsteId);
     const horasDisponiblesReales = this.horasTotales - horasAsignadasConCambiosPrevios;
 
-    // Validar que el nuevo valor no supere las horas disponibles
+    // Validar que la diferencia no supere las horas disponibles (igual que seccion-normal)
     const diferencia = (horas || 0) - (horasOriginales || 0);
-    if (diferencia > 0 && diferencia > horasDisponiblesReales) {
+    if (diferencia > horasDisponiblesReales) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Advertencia',
-        detail: 'No se puede asignar más horas de las disponibles',
+        detail: 'No hay suficientes horas disponibles',
         life: 3000
       });
       return;
@@ -843,11 +843,19 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   }
 
   setMaxHoras(id: string): number {
-    if (this.hayCambiosConfirmados(id)) {
-      const horasActuales = this.getHorasAsignadasActividad(id);
-      return horasActuales !== null ? horasActuales : 0;
+    const horasActuales = this.cambiosHoras[id] !== undefined
+      ? this.cambiosHoras[id]
+      : (this.getHorasAsignadasActividad(id) ?? 0);
+    const maxPosible = horasActuales + this.calcularHorasDisponibles();
+
+    const actividadRef = this.seccionesPadres
+      .flatMap(p => p.hijos)
+      .flatMap(h => h.actividades || [])
+      .find(a => a.id === id);
+    if (actividadRef?.horasMaximas && actividadRef.horasMaximas < maxPosible) {
+      return actividadRef.horasMaximas;
     }
-    return 40;
+    return maxPosible;
   }
 
   setMinInvestigacion(id: string): number {
@@ -866,15 +874,14 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   }
 
   setMaxInvestigacion(id: string): number {
-    let horasOriginales = 0;
-    for (const [_, inversiones] of this.investigacionesPorSeccion) {
-      const inv = inversiones.find(i => i.id === id);
-      if (inv) {
-        horasOriginales = inv.horas;
-        break;
+    let horasActuales = this.cambiosHoras[id] !== undefined ? this.cambiosHoras[id] : 0;
+    if (this.cambiosHoras[id] === undefined) {
+      for (const [, inversiones] of this.investigacionesPorSeccion) {
+        const inv = inversiones.find(i => i.id === id);
+        if (inv) { horasActuales = inv.horas; break; }
       }
     }
-    return horasOriginales;
+    return horasActuales + this.calcularHorasDisponibles();
   }
 
   esInvestigacion(id: string): boolean {
@@ -1138,5 +1145,4 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     const estadosNoPermitidos = ['Aprobado por Decanatura', 'Rechazado por Decanatura'];
     return !estadosNoPermitidos.includes(this.planDeTrabajo.estado || '');
   }
-  // ─────────────────────────────────────────────────────────────────────────
 }

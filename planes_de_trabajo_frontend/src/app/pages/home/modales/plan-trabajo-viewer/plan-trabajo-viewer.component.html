@@ -46,29 +46,6 @@
             </p>
           </div>
 
-          <div *ngIf="['DECANO', 'PROFESOR'].includes(rolUsuario)" class="ml-2">
-            <p-button
-              [icon]="modoResumido ? 'pi pi-eye' : 'pi pi-eye-slash'"
-              [text]="true"
-              [style]="{
-                background: 'transparent',
-                color: 'var(--p-primary-color)',
-                border: 'none',
-                padding: '0.25rem',
-                'border-radius': '50%',
-                width: '2.5rem',
-                height: '2.5rem'
-              }"
-              pTooltip="{{
-                modoResumido
-                  ? 'Mostrar actividades sin asignar'
-                  : 'Ocultar actividades sin asignar'
-              }}"
-              tooltipPosition="top"
-              (click)="modoResumido = !modoResumido"
-            >
-            </p-button>
-          </div>
           <p-button
             *ngIf="
               rolUsuario === 'DECANO' &&

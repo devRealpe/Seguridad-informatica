@@ -1,4 +1,13 @@
-import { Component, OnInit, signal, computed, OnDestroy, inject, effect, untracked } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  signal,
+  computed,
+  OnDestroy,
+  inject,
+  effect,
+  untracked,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CardModule } from 'primeng/card';
@@ -14,8 +23,15 @@ import { InputTextModule } from 'primeng/inputtext';
 import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
 import { InputComponent, SelectComponent } from '@microfrontends/shared-ui';
-import { PdfExportService, ProfesorData, PlanDeTrabajoCompleto } from '../../../core/services/pdf-export.service';
-import { PlanDeTrabajoModel, UpdateFirmasPlanDeTrabajo } from '../../../core/models/planDeTrabajo.model';
+import {
+  PdfExportService,
+  ProfesorData,
+  PlanDeTrabajoCompleto,
+} from '../../../core/services/pdf-export.service';
+import {
+  PlanDeTrabajoModel,
+  UpdateFirmasPlanDeTrabajo,
+} from '../../../core/models/planDeTrabajo.model';
 import { Profesor } from '../../../core/models/profesor.model';
 import { ProfesorService } from '../../../core/services/profesor.service';
 import { PlanDeTrabajoService } from '../../../core/services/planDeTrabajo.service';
@@ -32,7 +48,7 @@ import { InvestigacioneService } from '../../../core/services/investigaciones.se
 import {
   SeccionPadreData,
   SeccionHijoData,
-  ResumenProfesor
+  ResumenProfesor,
 } from '../../../core/services/pdf-export.service';
 import { NovedadService } from '../../../core/services/novedad.service';
 import { AuditoriaService } from '../../../core/services/auditoria.service';
@@ -88,7 +104,6 @@ interface PeriodoAcademico {
   styleUrl: './decano_home.scss',
 })
 export class DecanoHome implements OnInit, OnDestroy {
-
   private readonly novedadesService = inject(NovedadService);
 
   profesorDecano = signal<Profesor | null>(null);
@@ -134,6 +149,11 @@ export class DecanoHome implements OnInit, OnDestroy {
   profesorSeleccionadoParaObservaciones: ProfesorConPlan | null = null;
   cargandoAprobacion = false;
 
+  // Propiedades para el modo edición
+  showPlanViewerEdicion = false;
+  planTrabajoIdEdicion: string = '';
+  profesorIdEdicion: string = '';
+
   totalHoras = 40;
   porcentajeAsignado = 100;
 
@@ -170,7 +190,6 @@ export class DecanoHome implements OnInit, OnDestroy {
           const decano = this.profesorDecano();
           if (!decano) return;
 
-          
           const planAprobado = this.realtimeService.planAprobado();
           const planRechazado = this.realtimeService.planRechazado();
 
@@ -179,7 +198,7 @@ export class DecanoHome implements OnInit, OnDestroy {
               severity: 'success',
               summary: 'Plan Aprobado',
               detail: 'Un director ha aprobado un plan de trabajo',
-              life: 5000
+              life: 5000,
             });
             this.realtimeService.resetSignal('aprobado');
           }
@@ -189,7 +208,7 @@ export class DecanoHome implements OnInit, OnDestroy {
               severity: 'warn',
               summary: 'Plan Rechazado',
               detail: 'Un director ha rechazado un plan de trabajo',
-              life: 5000
+              life: 5000,
             });
             this.realtimeService.resetSignal('rechazado');
           }
@@ -228,7 +247,7 @@ export class DecanoHome implements OnInit, OnDestroy {
         this.messageService.add({
           severity: 'warn',
           summary: 'Sin selección',
-          detail: 'Seleccione un decano desde el panel de administración.'
+          detail: 'Seleccione un decano desde el panel de administración.',
         });
       }
     } else {
@@ -239,7 +258,7 @@ export class DecanoHome implements OnInit, OnDestroy {
         this.messageService.add({
           severity: 'error',
           summary: 'Error',
-          detail: 'No se pudo identificar al decano.'
+          detail: 'No se pudo identificar al decano.',
         });
       }
     }
@@ -257,7 +276,7 @@ export class DecanoHome implements OnInit, OnDestroy {
           this.messageService.add({
             severity: 'error',
             summary: 'Acceso inválido',
-            detail: 'El usuario no tiene el cargo de Decano (A).'
+            detail: 'El usuario no tiene el cargo de Decano (A).',
           });
         }
       },
@@ -266,9 +285,9 @@ export class DecanoHome implements OnInit, OnDestroy {
         this.messageService.add({
           severity: 'error',
           summary: 'Error',
-          detail: 'No se pudo cargar la información del decano.'
+          detail: 'No se pudo cargar la información del decano.',
         });
-      }
+      },
     });
   }
 
@@ -299,7 +318,7 @@ export class DecanoHome implements OnInit, OnDestroy {
       this.messageService.add({
         severity: 'error',
         summary: 'Acceso denegado',
-        detail: 'No se pudo identificar al decano. Inicie sesión nuevamente.'
+        detail: 'No se pudo identificar al decano. Inicie sesión nuevamente.',
       });
       return;
     }
@@ -316,7 +335,7 @@ export class DecanoHome implements OnInit, OnDestroy {
             this.messageService.add({
               severity: 'error',
               summary: 'Acceso inválido',
-              detail: 'El usuario no tiene el cargo de Decano en el sistema.'
+              detail: 'El usuario no tiene el cargo de Decano en el sistema.',
             });
           }
         },
@@ -325,9 +344,9 @@ export class DecanoHome implements OnInit, OnDestroy {
           this.messageService.add({
             severity: 'error',
             summary: 'Error',
-            detail: 'No se pudo cargar la información del decano'
+            detail: 'No se pudo cargar la información del decano',
           });
-        }
+        },
       });
     } catch (error) {
       this.cargando.set(false);
@@ -363,8 +382,10 @@ export class DecanoHome implements OnInit, OnDestroy {
       }
     }
 
-    const periodoDefault = periodos.find(p => p.anio === anioDefecto && p.periodo === periodoDefecto)
-      || periodos[0];
+    const periodoDefault =
+      periodos.find(
+        (p) => p.anio === anioDefecto && p.periodo === periodoDefecto
+      ) || periodos[0];
 
     this.periodosAcademicos = periodos;
     this.periodoSeleccionado.set(periodoDefault);
@@ -397,11 +418,14 @@ export class DecanoHome implements OnInit, OnDestroy {
   cargarProfesoresFacultad(facultad: string): void {
     this.profesorService.getByFacultad(facultad).subscribe({
       next: async (profesores) => {
-        const profesoresConPlan = await this.cargarPlanesDeTrabajoParaProfesores(profesores);
-        const profesoresConPlanAprobadoPorDirectorORechazados = profesoresConPlan.filter(p =>
-          p.planDeTrabajo?.firmaDirector ||
-          p.planDeTrabajo?.estado === 'Rechazado por Decanatura'
-        );
+        const profesoresConPlan =
+          await this.cargarPlanesDeTrabajoParaProfesores(profesores);
+        const profesoresConPlanAprobadoPorDirectorORechazados =
+          profesoresConPlan.filter(
+            (p) =>
+              p.planDeTrabajo?.firmaDirector ||
+              p.planDeTrabajo?.estado === 'Rechazado por Decanatura'
+          );
         this.allData.set(profesoresConPlanAprobadoPorDirectorORechazados);
         // No mostrar datos hasta que se seleccione un programa
         this.data.set([]);
@@ -438,11 +462,17 @@ export class DecanoHome implements OnInit, OnDestroy {
     const profesoresConPlan: ProfesorConPlan[] = [];
     for (const profesor of profesores) {
       try {
-        const planes = await this.planDeTrabajoService.getByProfesorId(profesor.numIdentificacion).toPromise();
-        const planDelPeriodo = (planes && Array.isArray(planes))
-          ? planes.find(p => p.anio === periodo.anio && p.periodo === periodo.periodo)
-          : null;
-        const dedicacion: 'TIEMPO COMPLETO' | 'MEDIO TIEMPO' = this.determinarDedicacion(profesor);
+        const planes = await this.planDeTrabajoService
+          .getByProfesorId(profesor.numIdentificacion)
+          .toPromise();
+        const planDelPeriodo =
+          planes && Array.isArray(planes)
+            ? planes.find(
+                (p) => p.anio === periodo.anio && p.periodo === periodo.periodo
+              )
+            : null;
+        const dedicacion: 'TIEMPO COMPLETO' | 'MEDIO TIEMPO' =
+          this.determinarDedicacion(profesor);
         if (planDelPeriodo) {
           const estadoInfo = this.calcularEstado(planDelPeriodo);
           profesoresConPlan.push({
@@ -468,7 +498,8 @@ export class DecanoHome implements OnInit, OnDestroy {
           });
         }
       } catch (error) {
-        const dedicacion: 'TIEMPO COMPLETO' | 'MEDIO TIEMPO' = this.determinarDedicacion(profesor);
+        const dedicacion: 'TIEMPO COMPLETO' | 'MEDIO TIEMPO' =
+          this.determinarDedicacion(profesor);
         profesoresConPlan.push({
           ...profesor,
           id: profesor.numIdentificacion,
@@ -491,7 +522,7 @@ export class DecanoHome implements OnInit, OnDestroy {
         if (Array.isArray(novedades) && novedades.length > 0) {
           const novedad = novedades.reduce((latest, current) =>
             new Date(current.fechaRegistro).getTime() >
-              new Date(latest.fechaRegistro).getTime()
+            new Date(latest.fechaRegistro).getTime()
               ? current
               : latest
           );
@@ -505,8 +536,8 @@ export class DecanoHome implements OnInit, OnDestroy {
                   apellidos: '',
                   cargo: '',
                   facultad: '',
-                  programa: ''
-                }
+                  programa: '',
+                },
               };
               this.displayModalNovedades.set(true);
               this.cargandoNovedades.set(false);
@@ -517,7 +548,7 @@ export class DecanoHome implements OnInit, OnDestroy {
                 profesorReportante: {
                   nombres: 'Desconocido',
                   apellidos: '',
-                }
+                },
               };
               this.displayModalNovedades.set(true);
               this.cargandoNovedades.set(false);
@@ -527,7 +558,7 @@ export class DecanoHome implements OnInit, OnDestroy {
           this.messageService.add({
             severity: 'info',
             summary: 'Sin novedades',
-            detail: 'No hay novedades registradas para este plan de trabajo'
+            detail: 'No hay novedades registradas para este plan de trabajo',
           });
           this.cargandoNovedades.set(false);
         }
@@ -571,35 +602,39 @@ export class DecanoHome implements OnInit, OnDestroy {
     if (!this.profesorSeleccionadoParaObservaciones?.planDeTrabajo) return;
 
     const planId = this.profesorSeleccionadoParaObservaciones.planDeTrabajo.id;
-    this.planDeTrabajoService.updateFirmas(planId, {
-      estado: "Aprobado",
-      firmaDecano: true,
-      motivoRechazo: ''
-    }).subscribe({
-      next: () => {
-        this.auditoriaService.create({
-          idPt: planId,
-          tipoCambio: 'Aprobado tras observaciones',
-          accion: `Aprobado por Decano ${this.nombreDecano} tras revisión de observaciones de Vicerrectoría`
-        }).subscribe();
+    this.planDeTrabajoService
+      .updateFirmas(planId, {
+        estado: 'Aprobado',
+        firmaDecano: true,
+        motivoRechazo: '',
+      })
+      .subscribe({
+        next: () => {
+          this.auditoriaService
+            .create({
+              idPt: planId,
+              tipoCambio: 'Aprobado tras observaciones',
+              accion: `Aprobado por Decano ${this.nombreDecano} tras revisión de observaciones de Vicerrectoría`,
+            })
+            .subscribe();
 
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Éxito',
-          detail: 'Plan aprobado exitosamente'
-        });
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Éxito',
+            detail: 'Plan aprobado exitosamente',
+          });
 
-        this.cerrarModalObservacionesVicerrectoria();
-        this.cargarProfesoresFacultad(this.profesorDecano()?.facultad || '');
-      },
-      error: (err) => {
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'No se pudo aprobar el plan'
-        });
-      }
-    });
+          this.cerrarModalObservacionesVicerrectoria();
+          this.cargarProfesoresFacultad(this.profesorDecano()?.facultad || '');
+        },
+        error: (err) => {
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'No se pudo aprobar el plan',
+          });
+        },
+      });
   }
 
   rechazarPlanConObservaciones(): void {
@@ -609,29 +644,35 @@ export class DecanoHome implements OnInit, OnDestroy {
     const tieneObservaciones = this.observacionesVicerrectoria?.trim() !== '';
 
     if (tieneObservaciones) {
-      this.firmaService.rechazarPlanDeTrabajo(planId, this.observacionesVicerrectoria).subscribe({
-        next: () => {
-          this.auditoriaService.create({
-            idPt: planId,
-            tipoCambio: 'Rechazado tras observaciones',
-            accion: `Rechazado por Decano ${this.nombreDecano} tras revisión de observaciones de Vicerrectoría`
-          }).subscribe();
-          this.messageService.add({
-            severity: 'warn',
-            summary: 'Plan Rechazado',
-            detail: 'El plan ha sido rechazado por el decano'
-          });
-          this.cerrarModalObservacionesVicerrectoria();
-          this.cargarProfesoresFacultad(this.profesorDecano()?.facultad || '');
-        },
-        error: (err) => {
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'No se pudo rechazar el plan'
-          });
-        }
-      });
+      this.firmaService
+        .rechazarPlanDeTrabajo(planId, this.observacionesVicerrectoria)
+        .subscribe({
+          next: () => {
+            this.auditoriaService
+              .create({
+                idPt: planId,
+                tipoCambio: 'Rechazado tras observaciones',
+                accion: `Rechazado por Decano ${this.nombreDecano} tras revisión de observaciones de Vicerrectoría`,
+              })
+              .subscribe();
+            this.messageService.add({
+              severity: 'warn',
+              summary: 'Plan Rechazado',
+              detail: 'El plan ha sido rechazado por el decano',
+            });
+            this.cerrarModalObservacionesVicerrectoria();
+            this.cargarProfesoresFacultad(
+              this.profesorDecano()?.facultad || ''
+            );
+          },
+          error: (err) => {
+            this.messageService.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: 'No se pudo rechazar el plan',
+            });
+          },
+        });
     } else {
       this.cerrarModalObservacionesVicerrectoria();
     }
@@ -690,7 +731,10 @@ export class DecanoHome implements OnInit, OnDestroy {
     if (plan.rechazado === true) {
       if (plan.estado === 'RECHAZADO') {
         return { estado: 'Rechazado por Profesor', severity: 'danger' };
-      } else if (plan.estado === 'Rechazado por Decanatura' || !plan.firmaDecano) {
+      } else if (
+        plan.estado === 'Rechazado por Decanatura' ||
+        !plan.firmaDecano
+      ) {
         return { estado: 'Rechazado por Decanatura', severity: 'danger' };
       } else if (!plan.firmaDirector) {
         return { estado: 'Rechazado por Director', severity: 'danger' };
@@ -726,7 +770,7 @@ export class DecanoHome implements OnInit, OnDestroy {
   aplicarFiltroTexto(campo: CampoFiltro, valor: string): void {
     // Actualizar filtros inmediatamente
     this.filtros.update((f) => ({ ...f, [campo]: valor }));
-    
+
     // Para el campo programa, aplicar filtro inmediatamente sin debounce
     if (campo === 'programa') {
       this.cargandoFiltros.set(true);
@@ -744,18 +788,18 @@ export class DecanoHome implements OnInit, OnDestroy {
 
   private aplicarFiltros(): void {
     const filtrosActuales = this.filtros();
-    
+
     // Si no hay programa seleccionado, no mostrar datos
     if (!filtrosActuales.programa) {
       this.data.set([]);
       return;
     }
-    
+
     let datos = this.allData();
-    
+
     // Filtrar por programa
     datos = datos.filter((p) => p.programa === filtrosActuales.programa);
-    
+
     // Filtrar por nombres
     if (filtrosActuales.nombres.trim()) {
       const nombreBusqueda = filtrosActuales.nombres.toLowerCase().trim();
@@ -765,13 +809,13 @@ export class DecanoHome implements OnInit, OnDestroy {
           p.apellidos.toLowerCase().includes(nombreBusqueda)
       );
     }
-    
+
     // Filtrar por identificación
     if (filtrosActuales.numIdentificacion.trim()) {
       const cedulaBusqueda = filtrosActuales.numIdentificacion.trim();
       datos = datos.filter((p) => p.documento.includes(cedulaBusqueda));
     }
-    
+
     this.data.set(datos);
   }
 
@@ -834,10 +878,12 @@ export class DecanoHome implements OnInit, OnDestroy {
     this.showPlanViewer = true;
   }
 
-    onEstadoPlanCambiado(nuevoEstado: string): void {
+  onEstadoPlanCambiado(nuevoEstado: string): void {
     if (this.profesorIdViewer) {
       const data = this.data();
-      const index = data.findIndex(p => p.numIdentificacion === this.profesorIdViewer);
+      const index = data.findIndex(
+        (p) => p.numIdentificacion === this.profesorIdViewer
+      );
 
       if (index !== -1) {
         // Create a copy of the professor object
@@ -845,13 +891,15 @@ export class DecanoHome implements OnInit, OnDestroy {
 
         // Update status and severity
         updatedProfesor.estado = nuevoEstado;
-        updatedProfesor.severityEstado = this.getEstadoSeverity(nuevoEstado) as any;
+        updatedProfesor.severityEstado = this.getEstadoSeverity(
+          nuevoEstado
+        ) as any;
 
         // Update planDeTrabajo internal state if it exists
         if (updatedProfesor.planDeTrabajo) {
           updatedProfesor.planDeTrabajo = {
             ...updatedProfesor.planDeTrabajo,
-            estado: nuevoEstado
+            estado: nuevoEstado,
           };
         }
 
@@ -862,7 +910,9 @@ export class DecanoHome implements OnInit, OnDestroy {
 
         // Also update allData to ensure consistency
         const allData = this.allData();
-        const allIndex = allData.findIndex(p => p.numIdentificacion === this.profesorIdViewer);
+        const allIndex = allData.findIndex(
+          (p) => p.numIdentificacion === this.profesorIdViewer
+        );
         if (allIndex !== -1) {
           const newAllData = [...allData];
           newAllData[allIndex] = updatedProfesor;
@@ -878,11 +928,13 @@ export class DecanoHome implements OnInit, OnDestroy {
     this.profesorIdViewer = '';
   }
 
-    get puedeAprobar(): boolean {
+  get puedeAprobar(): boolean {
     return this.profesoresPendientes.length > 0;
   }
 
-  getEstadoSeverity(estado: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
+  getEstadoSeverity(
+    estado: string
+  ): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
     const estadoLower = estado?.toLowerCase() || '';
 
     if (estadoLower === 'aprobado') {
@@ -897,46 +949,55 @@ export class DecanoHome implements OnInit, OnDestroy {
     return 'info';
   }
 
-    onAprobarClick(): void {
+  onAprobarClick(): void {
     this.showModalConfirmacion = true;
   }
 
   get mensajeTablaVacia(): string {
     const filtrosActuales = this.filtros();
-    
+
     // Si no hay programa seleccionado
     if (!filtrosActuales.programa) {
       return 'Selecciona un programa para ver los planes de trabajo';
     }
-    
+
     // Si hay filtros aplicados pero no hay resultados
-    if (
-      filtrosActuales.nombres ||
-      filtrosActuales.numIdentificacion
-    ) {
+    if (filtrosActuales.nombres || filtrosActuales.numIdentificacion) {
       return 'No se encontraron resultados con los filtros aplicados';
     }
-    
+
     return 'No hay planes de trabajo para mostrar';
   }
 
   async onExportarPTClick(): Promise<void> {
     const profesores = this.profesoresAprobadosYEnviados;
     if (profesores.length === 0) {
-      this.messageService.add({ severity: 'warn', summary: 'Sin PTs', detail: 'No hay planes aprobados' });
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Sin PTs',
+        detail: 'No hay planes aprobados',
+      });
       return;
     }
 
     const periodo = this.periodoSeleccionado();
     const decano = this.profesorDecano();
     if (!periodo || !decano) {
-      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Faltan datos de contexto' });
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Faltan datos de contexto',
+      });
       return;
     }
 
     const contexto = {
       periodo: { anio: periodo.anio, periodo: periodo.periodo },
-      decano: { nombres: decano.nombres, apellidos: decano.apellidos, facultad: decano.facultad }
+      decano: {
+        nombres: decano.nombres,
+        apellidos: decano.apellidos,
+        facultad: decano.facultad,
+      },
     };
 
     try {
@@ -944,21 +1005,24 @@ export class DecanoHome implements OnInit, OnDestroy {
         severity: 'info',
         summary: 'Generando PDF',
         detail: `Generando consolidado con ${profesores.length} planes...`,
-        life: 3000
+        life: 3000,
       });
 
-      await this.planTrabajoDescargarService.exportarPTConsolidado(profesores, contexto);
+      await this.planTrabajoDescargarService.exportarPTConsolidado(
+        profesores,
+        contexto
+      );
 
       this.messageService.add({
         severity: 'success',
         summary: 'PDF generado',
-        detail: `Se descargó el consolidado con ${profesores.length} planes de trabajo`
+        detail: `Se descargó el consolidado con ${profesores.length} planes de trabajo`,
       });
     } catch (error: any) {
       this.messageService.add({
         severity: 'error',
         summary: 'Error al generar PDF',
-        detail: error.message || 'Ocurrió un error. Inténtelo de nuevo.'
+        detail: error.message || 'Ocurrió un error. Inténtelo de nuevo.',
       });
     }
   }
@@ -966,20 +1030,32 @@ export class DecanoHome implements OnInit, OnDestroy {
   async onExportarZIPClick(): Promise<void> {
     const profesores = this.profesoresAprobadosYEnviados;
     if (profesores.length === 0) {
-      this.messageService.add({ severity: 'warn', summary: 'Sin PTs', detail: 'No hay planes aprobados' });
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Sin PTs',
+        detail: 'No hay planes aprobados',
+      });
       return;
     }
 
     const periodo = this.periodoSeleccionado();
     const decano = this.profesorDecano();
     if (!periodo || !decano) {
-      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Faltan datos de contexto' });
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Faltan datos de contexto',
+      });
       return;
     }
 
     const contexto = {
       periodo: { anio: periodo.anio, periodo: periodo.periodo },
-      decano: { nombres: decano.nombres, apellidos: decano.apellidos, facultad: decano.facultad }
+      decano: {
+        nombres: decano.nombres,
+        apellidos: decano.apellidos,
+        facultad: decano.facultad,
+      },
     };
 
     try {
@@ -987,7 +1063,7 @@ export class DecanoHome implements OnInit, OnDestroy {
         severity: 'info',
         summary: 'Generando ZIP',
         detail: `Generando ZIP con ${profesores.length} planes... Esto puede tardar unos momentos.`,
-        life: 3000
+        life: 3000,
       });
 
       await this.planTrabajoDescargarService.exportarZIP(profesores, contexto);
@@ -995,13 +1071,13 @@ export class DecanoHome implements OnInit, OnDestroy {
       this.messageService.add({
         severity: 'success',
         summary: 'ZIP generado',
-        detail: `Se descargó el archivo ZIP con los planes de trabajo`
+        detail: `Se descargó el archivo ZIP con los planes de trabajo`,
       });
     } catch (error: any) {
       this.messageService.add({
         severity: 'error',
         summary: 'Error al generar ZIP',
-        detail: error.message || 'Ocurrió un error. Inténtelo de nuevo.'
+        detail: error.message || 'Ocurrió un error. Inténtelo de nuevo.',
       });
     }
   }
@@ -1010,13 +1086,21 @@ export class DecanoHome implements OnInit, OnDestroy {
     const periodo = this.periodoSeleccionado();
     const decano = this.profesorDecano();
     if (!periodo || !decano) {
-      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Faltan datos de contexto' });
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Faltan datos de contexto',
+      });
       return;
     }
 
     const contexto = {
       periodo: { anio: periodo.anio, periodo: periodo.periodo },
-      decano: { nombres: decano.nombres, apellidos: decano.apellidos, facultad: decano.facultad }
+      decano: {
+        nombres: decano.nombres,
+        apellidos: decano.apellidos,
+        facultad: decano.facultad,
+      },
     };
 
     try {
@@ -1024,21 +1108,24 @@ export class DecanoHome implements OnInit, OnDestroy {
         severity: 'info',
         summary: 'Generando PT',
         detail: `Generando PDF de ${profesor.nombres} ${profesor.apellidos}...`,
-        life: 3000
+        life: 3000,
       });
 
-      await this.planTrabajoDescargarService.descargarPTIndividual(profesor, contexto);
+      await this.planTrabajoDescargarService.descargarPTIndividual(
+        profesor,
+        contexto
+      );
 
       this.messageService.add({
         severity: 'success',
         summary: 'PT descargado',
-        detail: `Se ha descargado el PT de ${profesor.nombres} ${profesor.apellidos}`
+        detail: `Se ha descargado el PT de ${profesor.nombres} ${profesor.apellidos}`,
       });
     } catch (error: any) {
       this.messageService.add({
         severity: 'error',
         summary: 'Error al generar PT',
-        detail: error.message || 'Ocurrió un error. Inténtelo de nuevo.'
+        detail: error.message || 'Ocurrió un error. Inténtelo de nuevo.',
       });
     }
   }
@@ -1078,21 +1165,25 @@ export class DecanoHome implements OnInit, OnDestroy {
 
   get profesoresPendientes(): ProfesorConPlan[] {
     return this.data().filter(
-      (profesor) => (profesor.estado === 'Esperando aprobación de decanatura' || profesor.estado === 'Revisado')
+      (profesor) =>
+        profesor.estado === 'Esperando aprobación de decanatura' ||
+        profesor.estado === 'Revisado'
     );
   }
 
   get profesoresAprobadosDecanatura(): ProfesorConPlan[] {
-    return this.data().filter((profesor) =>
-      profesor.estado === 'Aprobado' &&
-      profesor.planDeTrabajo?.estado !== 'Enviado a sistemas'
+    return this.data().filter(
+      (profesor) =>
+        profesor.estado === 'Aprobado' &&
+        profesor.planDeTrabajo?.estado !== 'Enviado a sistemas'
     );
   }
 
   get profesoresParaEnviarAVicerrectoria(): ProfesorConPlan[] {
     return this.data().filter(
       (profesor) =>
-        (profesor.estado === 'Esperando aprobación de decanatura' || profesor.estado === 'Revisado') &&
+        (profesor.estado === 'Esperando aprobación de decanatura' ||
+          profesor.estado === 'Revisado') &&
         profesor.planDeTrabajo?.estado !== 'Enviado a Vicerrectoría'
     );
   }
@@ -1106,12 +1197,14 @@ export class DecanoHome implements OnInit, OnDestroy {
   }
 
   onConfirmarEnviarVicerrectoria(): void {
-    const planesPendientes = this.profesoresParaEnviarAVicerrectoria.filter(p => p.planDeTrabajo);
+    const planesPendientes = this.profesoresParaEnviarAVicerrectoria.filter(
+      (p) => p.planDeTrabajo
+    );
     if (planesPendientes.length === 0) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Sin planes',
-        detail: 'No hay planes pendientes para enviar a Vicerrectoría'
+        detail: 'No hay planes pendientes para enviar a Vicerrectoría',
       });
       return;
     }
@@ -1120,24 +1213,26 @@ export class DecanoHome implements OnInit, OnDestroy {
     let planesEnviados = 0;
     let planesConError = 0;
 
-    planesPendientes.forEach(profesor => {
+    planesPendientes.forEach((profesor) => {
       const actualizacion: UpdateFirmasPlanDeTrabajo = {
-        estado: 'Enviado a Vicerrectoría'
+        estado: 'Enviado a Vicerrectoría',
       };
-      this.planDeTrabajoService.updateFirmas(profesor.planDeTrabajo!.id, actualizacion).subscribe({
-        next: () => {
-          planesEnviados++;
-          if (planesEnviados + planesConError === planesPendientes.length) {
-            this.finalizarEnvioVicerrectoria(planesEnviados, planesConError);
-          }
-        },
-        error: (error) => {
-          planesConError++;
-          if (planesEnviados + planesConError === planesPendientes.length) {
-            this.finalizarEnvioVicerrectoria(planesEnviados, planesConError);
-          }
-        }
-      });
+      this.planDeTrabajoService
+        .updateFirmas(profesor.planDeTrabajo!.id, actualizacion)
+        .subscribe({
+          next: () => {
+            planesEnviados++;
+            if (planesEnviados + planesConError === planesPendientes.length) {
+              this.finalizarEnvioVicerrectoria(planesEnviados, planesConError);
+            }
+          },
+          error: (error) => {
+            planesConError++;
+            if (planesEnviados + planesConError === planesPendientes.length) {
+              this.finalizarEnvioVicerrectoria(planesEnviados, planesConError);
+            }
+          },
+        });
     });
   }
 
@@ -1149,9 +1244,9 @@ export class DecanoHome implements OnInit, OnDestroy {
       this.messageService.add({
         severity: 'success',
         summary: 'Envío Exitoso',
-        detail: `Se enviaron ${enviados} planes de trabajo a Vicerrectoría`
+        detail: `Se enviaron ${enviados} planes de trabajo a Vicerrectoría`,
       });
-      
+
       // Enviar notificación a Vicerrectoría después de envío exitoso
       if (enviados > 0) {
         this.enviarNotificacionVicerrectoria(enviados);
@@ -1160,7 +1255,7 @@ export class DecanoHome implements OnInit, OnDestroy {
       this.messageService.add({
         severity: 'warn',
         summary: 'Envío Parcial',
-        detail: `Se enviaron ${enviados} planes. ${errores} tuvieron errores.`
+        detail: `Se enviaron ${enviados} planes. ${errores} tuvieron errores.`,
       });
     }
 
@@ -1175,13 +1270,16 @@ export class DecanoHome implements OnInit, OnDestroy {
   }
 
   get profesoresConObservaciones(): ProfesorConPlan[] {
-    return this.data().filter(p => p.estado === 'Observaciones de Vicerrectoría');
+    return this.data().filter(
+      (p) => p.estado === 'Observaciones de Vicerrectoría'
+    );
   }
 
   get profesoresAprobadosYEnviados(): ProfesorConPlan[] {
-    return this.data().filter((profesor) =>
-      profesor.estado === 'Aprobado' ||
-      profesor.planDeTrabajo?.estado === 'Enviado a sistemas'
+    return this.data().filter(
+      (profesor) =>
+        profesor.estado === 'Aprobado' ||
+        profesor.planDeTrabajo?.estado === 'Enviado a sistemas'
     );
   }
 
@@ -1213,13 +1311,15 @@ export class DecanoHome implements OnInit, OnDestroy {
   }
 
   onConfirmarEnviarPlaneacion(): void {
-    const planesAprobados = this.profesoresAprobadosDecanatura.filter(p => p.planDeTrabajo);
+    const planesAprobados = this.profesoresAprobadosDecanatura.filter(
+      (p) => p.planDeTrabajo
+    );
 
     if (planesAprobados.length === 0) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Sin planes',
-        detail: 'No hay planes de trabajo aprobados para enviar'
+        detail: 'No hay planes de trabajo aprobados para enviar',
       });
       return;
     }
@@ -1228,31 +1328,33 @@ export class DecanoHome implements OnInit, OnDestroy {
     let planesEnviados = 0;
     let planesConError = 0;
 
-    planesAprobados.forEach(profesor => {
+    planesAprobados.forEach((profesor) => {
       const actualizacion: UpdateFirmasPlanDeTrabajo = {
-        estado: 'Enviado a planeacion'
+        estado: 'Enviado a planeacion',
       };
 
-      this.planDeTrabajoService.updateFirmas(profesor.planDeTrabajo!.id, actualizacion).subscribe({
-        next: () => {
-          planesEnviados++;
-          if (planesEnviados + planesConError === planesAprobados.length) {
-            // Enviar notificación a sistemas después de actualizar todos los planes
-            this.enviarNotificacionPlaneacion(planesEnviados);
-            this.finalizarEnvioPlaneacion(planesEnviados, planesConError);
-          }
-        },
-        error: (error) => {
-          planesConError++;
-          if (planesEnviados + planesConError === planesAprobados.length) {
-            // Enviar notificación aunque hubo errores
-            if (planesEnviados > 0) {
+      this.planDeTrabajoService
+        .updateFirmas(profesor.planDeTrabajo!.id, actualizacion)
+        .subscribe({
+          next: () => {
+            planesEnviados++;
+            if (planesEnviados + planesConError === planesAprobados.length) {
+              // Enviar notificación a sistemas después de actualizar todos los planes
               this.enviarNotificacionPlaneacion(planesEnviados);
+              this.finalizarEnvioPlaneacion(planesEnviados, planesConError);
             }
-            this.finalizarEnvioPlaneacion(planesEnviados, planesConError);
-          }
-        }
-      });
+          },
+          error: (error) => {
+            planesConError++;
+            if (planesEnviados + planesConError === planesAprobados.length) {
+              // Enviar notificación aunque hubo errores
+              if (planesEnviados > 0) {
+                this.enviarNotificacionPlaneacion(planesEnviados);
+              }
+              this.finalizarEnvioPlaneacion(planesEnviados, planesConError);
+            }
+          },
+        });
     });
   }
 
@@ -1264,13 +1366,13 @@ export class DecanoHome implements OnInit, OnDestroy {
       this.messageService.add({
         severity: 'success',
         summary: 'Envío Exitoso',
-        detail: `Se enviaron ${enviados} planes de trabajo a planeación`
+        detail: `Se enviaron ${enviados} planes de trabajo a planeación`,
       });
     } else {
       this.messageService.add({
         severity: 'warn',
         summary: 'Envío Parcial',
-        detail: `Se enviaron ${enviados} planes. ${errores} tuvieron errores.`
+        detail: `Se enviaron ${enviados} planes. ${errores} tuvieron errores.`,
       });
     }
 
@@ -1287,24 +1389,26 @@ export class DecanoHome implements OnInit, OnDestroy {
     }
 
     // Obtener el primer plan aprobado para obtener programa, periodo y año
-    const primerPlan = this.profesoresAprobadosDecanatura.find(p => p.planDeTrabajo)?.planDeTrabajo;
+    const primerPlan = this.profesoresAprobadosDecanatura.find(
+      (p) => p.planDeTrabajo
+    )?.planDeTrabajo;
     if (!primerPlan) {
       return;
     }
 
-
-
-    this.notificacionesService.notificarEnvioPlaneacion({
-      emailDecano: decano.numIdentificacion,
-      nombreDecano: `${decano.nombres} ${decano.apellidos}`,
-      programa: primerPlan.idPrograma || decano.programa,
-      periodo: primerPlan.periodo,
-      anio: primerPlan.anio,
-      cantidadPlanes: cantidadPlanes
-    }).subscribe({
-      next: (response) => {},
-      error: (err) => {}
-    });
+    this.notificacionesService
+      .notificarEnvioPlaneacion({
+        emailDecano: decano.numIdentificacion,
+        nombreDecano: `${decano.nombres} ${decano.apellidos}`,
+        programa: primerPlan.idPrograma || decano.programa,
+        periodo: primerPlan.periodo,
+        anio: primerPlan.anio,
+        cantidadPlanes: cantidadPlanes,
+      })
+      .subscribe({
+        next: (response) => {},
+        error: (err) => {},
+      });
   }
 
   private enviarNotificacionVicerrectoria(cantidadPlanes: number): void {
@@ -1314,27 +1418,31 @@ export class DecanoHome implements OnInit, OnDestroy {
     }
 
     // Obtener el primer plan enviado para obtener programa, periodo y año
-    const primerPlan = this.profesoresParaEnviarAVicerrectoria.find(p => p.planDeTrabajo)?.planDeTrabajo;
+    const primerPlan = this.profesoresParaEnviarAVicerrectoria.find(
+      (p) => p.planDeTrabajo
+    )?.planDeTrabajo;
     if (!primerPlan) {
       return;
     }
 
-    this.notificacionesService.notificarEnvioVicerrectoria({
-      emailDecano: decano.numIdentificacion,
-      nombreDecano: `${decano.nombres} ${decano.apellidos}`,
-      programa: primerPlan.idPrograma || decano.programa,
-      periodo: primerPlan.periodo.toString(),
-      anio: primerPlan.anio.toString(),
-      cantidadPlanes: cantidadPlanes
-    }).subscribe({
-      next: (response) => {},
-      error: (err) => {}
-    });
+    this.notificacionesService
+      .notificarEnvioVicerrectoria({
+        emailDecano: decano.numIdentificacion,
+        nombreDecano: `${decano.nombres} ${decano.apellidos}`,
+        programa: primerPlan.idPrograma || decano.programa,
+        periodo: primerPlan.periodo.toString(),
+        anio: primerPlan.anio.toString(),
+        cantidadPlanes: cantidadPlanes,
+      })
+      .subscribe({
+        next: (response) => {},
+        error: (err) => {},
+      });
   }
 
   onCancelarEnviarPlaneacion(): void {
     this.showModalEnviarPlaneacion = false;
-  } 
+  }
 
   get cantidadPlanesParaEnviar(): number {
     return this.profesoresAprobadosDecanatura.length;
@@ -1346,14 +1454,19 @@ export class DecanoHome implements OnInit, OnDestroy {
 
   actualizarEstadoPlan(nuevoEstado: string): void {
     const dataActual = this.allData();
-    const index = dataActual.findIndex(p => p.planDeTrabajo?.id === this.planTrabajoIdViewer);
+    const index = dataActual.findIndex(
+      (p) => p.planDeTrabajo?.id === this.planTrabajoIdViewer
+    );
 
     if (index !== -1) {
       const updatedData = [...dataActual];
       const profesor = { ...updatedData[index] };
 
       if (profesor.planDeTrabajo) {
-        profesor.planDeTrabajo = { ...profesor.planDeTrabajo, estado: nuevoEstado };
+        profesor.planDeTrabajo = {
+          ...profesor.planDeTrabajo,
+          estado: nuevoEstado,
+        };
 
         const estadoInfo = this.calcularEstado(profesor.planDeTrabajo);
         profesor.estado = estadoInfo.estado;
@@ -1363,11 +1476,36 @@ export class DecanoHome implements OnInit, OnDestroy {
         this.allData.set(updatedData);
         this.aplicarFiltros();
 
-        if (this.profesorSeleccionado && this.profesorSeleccionado.numIdentificacion === profesor.numIdentificacion) {
+        if (
+          this.profesorSeleccionado &&
+          this.profesorSeleccionado.numIdentificacion ===
+            profesor.numIdentificacion
+        ) {
           this.profesorSeleccionado = profesor;
         }
       }
     }
   }
 
+  // Método para abrir el modo edición
+onEditarHoras(profesor: ProfesorConPlan): void {
+  if (!profesor.planDeTrabajo) {
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Sin plan de trabajo',
+      detail: `${profesor.nombres} ${profesor.apellidos} no tiene un plan de trabajo asignado`,
+    });
+    return;
+  }
+  this.planTrabajoIdEdicion = profesor.planDeTrabajo.id;
+  this.profesorIdEdicion = profesor.numIdentificacion;
+  this.showPlanViewerEdicion = true;
+}
+
+// Nuevo método para cerrar el modo edición
+onCerrarPlanViewerEdicion(): void {
+  this.showPlanViewerEdicion = false;
+  this.planTrabajoIdEdicion = '';
+  this.profesorIdEdicion = '';
+}
 }

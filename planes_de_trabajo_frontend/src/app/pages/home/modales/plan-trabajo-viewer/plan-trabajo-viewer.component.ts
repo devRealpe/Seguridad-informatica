@@ -11,6 +11,7 @@ import { PanelModule } from 'primeng/panel';
 import { ScrollPanelModule } from 'primeng/scrollpanel';
 import { BadgeModule } from 'primeng/badge';
 import { SkeletonModule } from 'primeng/skeleton';
+import { ToastModule } from 'primeng/toast';
 import { SeccionService } from '../../../../core/services/seccion.service';
 import { SeccionHijo, SeccionPadre } from 'apps/planes_de_trabajo/src/app/core/models/seccion.model';
 import { PlanDeTrabajoService } from '../../../../core/services/planDeTrabajo.service';
@@ -47,6 +48,7 @@ import { NotificacionesPlanTrabajoService } from '../../../../core/services/noti
     BadgeModule,
     SkeletonModule,
     DialogModule,
+    ToastModule,
     TooltipModule,
     FormsModule,
     InputNumberModule,
@@ -60,6 +62,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   @Input() planDeTrabajoId!: string;
   @Input() profesorId!: string;
   @Input() rolUsuario: 'DECANO' | 'DIRECTOR' | 'PROFESOR' | string = 'PROFESOR';
+  @Input() modoEdicion: boolean = false;
 
   seccionesPadres: SeccionPadre[] = [];
   planDeTrabajo: PlanDeTrabajoModel | null = null;
@@ -76,10 +79,16 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   decanoInfo: Profesor | null = null;
   rechazadoPorDecano = false;
   mostrarModalMotivoRechazo = false;
-  modoResumido = true;
+  get modoResumido(): boolean { return !this.modoEdicion; }
   investigacionesPorSeccion: Map<string, Investigaciones[]> = new Map();
   mostrarModalConfirmacionCambio = false;
   descripcionCambio = '';
+
+  // Propiedades para mostrar desglose de horas
+  horasCursos = 0;
+  horasNormales = 0;
+  horasInvestigacion = 0;
+  horasTotales = 40;
 
   estadoFirmas: {
     enviadoProfesor: boolean;
@@ -205,6 +214,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
         this.profesorInfo = profesor;
         if (profesor) {
           this.totalHorasDisponibles = this.determinarHorasDisponibles(profesor);
+          this.horasTotales = this.totalHorasDisponibles;
           this.calcularTotales();
         }
       },
@@ -327,11 +337,12 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   }
 
   calcularTotales() {
-    const horasActividades = this.actividadesPlanDeTrabajo.reduce((total, actividad) => {
+    // Calcular horas base del servidor
+    let horasActividades = this.actividadesPlanDeTrabajo.reduce((total, actividad) => {
       return total + (actividad.horas || 0);
     }, 0);
 
-    const horasCursos = this.asignaturas.reduce((total, asignatura) => {
+    let horasCursos = this.asignaturas.reduce((total, asignatura) => {
       return total + (asignatura.horasPresenciales || 0);
     }, 0);
 
@@ -342,9 +353,47 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       }, 0);
     });
 
-    this.totalHorasAsignadas = horasActividades + horasCursos + horasInvestigacion;
+    // Aplicar cambios pendientes
+    Object.entries(this.cambiosHoras).forEach(([actividadId, nuevoValor]) => {
+      // Buscar en actividades
+      const actividad = this.actividadesPlanDeTrabajo.find(a => a.actividades?.id === actividadId);
+      if (actividad) {
+        const diferencia = (nuevoValor || 0) - (actividad.horas || 0);
+        horasActividades += diferencia;
+        return;
+      }
+
+      // Buscar en asignaturas
+      const asignatura = this.asignaturas.find(a => a.codAsignatura === actividadId);
+      if (asignatura) {
+        const diferencia = (nuevoValor || 0) - (asignatura.horasPresenciales || 0);
+        horasCursos += diferencia;
+        return;
+      }
+
+      // Buscar en investigaciones
+      for (const [seccionId, investigaciones] of this.investigacionesPorSeccion) {
+        const inv = investigaciones.find(i => i.id === actividadId);
+        if (inv) {
+          const diferencia = (nuevoValor || 0) - (inv.horas || 0);
+          horasInvestigacion += diferencia;
+          return;
+        }
+      }
+    });
+
+    // Guardar los valores en las propiedades de clase
+    this.horasCursos = Math.max(0, horasCursos);
+    this.horasNormales = Math.max(0, horasActividades);
+    this.horasInvestigacion = Math.max(0, horasInvestigacion);
+    
+    this.totalHorasAsignadas = this.horasCursos + this.horasNormales + this.horasInvestigacion;
 
     this.porcentajeCompletado = Math.round((this.totalHorasAsignadas / this.totalHorasDisponibles) * 100);
+  }
+
+  calcularHorasDisponibles(): number {
+    return this.horasTotales - this.totalHorasAsignadas;
   }
 
   getActividadesPorSeccion(seccionHijo: SeccionHijo): ActividadPlanDeTrabajo[] {
@@ -665,6 +714,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   idActividadEditando: string | null = null;
   mostrarModalProductos = false;
   productosSeleccionados: any[] = [];
+  ultimoIdActividadCambiada: string | null = null;
 
   onHorasChange(id: string, horas: number): void {
     if (horas < 0) return;
@@ -681,6 +731,21 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       }
     }
 
+    // Calcular si el nuevo valor de horas excede las horas disponibles
+    const diferencia = (horas || 0) - (horasOriginales || 0);
+    const horasDisponiblesActuales = this.calcularHorasDisponibles() + (horasOriginales || 0);
+
+    // Validar que no se asignen más horas de las máximas
+    if (diferencia > 0 && diferencia > horasDisponiblesActuales) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Advertencia',
+        detail: 'No se puede asignar mas horas de las maximas',
+        life: 3000
+      });
+      return;
+    }
+
     if (horasOriginales !== null && horas === horasOriginales) {
       delete this.cambiosHoras[id];
       this.idActividadEditando = null;
@@ -690,7 +755,21 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     } else {
       this.cambiosHoras[id] = horas;
       this.idActividadEditando = id;
+      
+      // Mostrar mensaje de éxito solo si no se mostró uno reciente para este ID
+      if (this.ultimoIdActividadCambiada !== id) {
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Éxito',
+          detail: 'Actividad actualizada exitosamente',
+          life: 3000
+        });
+        this.ultimoIdActividadCambiada = id;
+      }
     }
+
+    // Recalcular totales inmediatamente
+    this.calcularTotales();
   }
 
   isInputDisabled(id: string): boolean {
@@ -821,6 +900,8 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     }
 
     this.descripcionCambio = '';
+    // Asegurar que los totales estén actualizados antes de mostrar el modal
+    this.calcularTotales();
     this.mostrarModalConfirmacionCambio = true;
   }
 

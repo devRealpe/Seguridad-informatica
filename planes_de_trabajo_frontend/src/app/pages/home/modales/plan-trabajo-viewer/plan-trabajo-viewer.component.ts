@@ -823,7 +823,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     if (this.rolUsuario !== 'DECANO') return true;
     if (this.planDeTrabajo?.estado !== 'Activo') return true;
     if (this.planDeTrabajo?.firmaDecano === true) return true;
-    if (this.getHorasAsignadasActividad(id) === null || this.getHorasAsignadasActividad(id) === 0) return true;
+
     return false;
   }
 

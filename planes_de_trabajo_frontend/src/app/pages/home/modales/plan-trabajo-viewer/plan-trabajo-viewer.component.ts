@@ -346,11 +346,12 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   }
 
 calcularTotales() {
+  // Base: valores originales de BD sin ningún cambio pendiente
   let horasActividades = this.actividadesPlanDeTrabajo.reduce((total, actividad) => {
     return total + (actividad.horas || 0);
   }, 0);
 
-  let horasCursos = this.asignaturas.reduce((total, asignatura) => {
+  const horasCursos = this.asignaturas.reduce((total, asignatura) => {
     return total + (asignatura.horasPresenciales || 0);
   }, 0);
 
@@ -361,29 +362,37 @@ calcularTotales() {
     }, 0);
   });
 
-  // Aplicar cambios pendientes
-  Object.entries(this.cambiosHoras).forEach(([actividadId, nuevoValor]) => {
-    const actividad = this.actividadesPlanDeTrabajo.find(a => a.actividades?.id === actividadId);
+  // Aplicar cambios pendientes: restar el valor BD y sumar el nuevo
+  for (const [idCambio, nuevoValor] of Object.entries(this.cambiosHoras)) {
+    // ¿Es una actividad normal?
+    const actividad = this.actividadesPlanDeTrabajo.find(
+      a => a.actividades?.id === idCambio
+    );
     if (actividad) {
-      horasActividades = horasActividades - (actividad.horas || 0) + (nuevoValor || 0);
-      return;
+      horasActividades = horasActividades - (actividad.horas || 0) + nuevoValor;
+      continue;
     }
 
+    // ¿Es una investigación?
+    let encontrado = false;
     for (const [, investigaciones] of this.investigacionesPorSeccion) {
-      const inv = investigaciones.find(i => i.id === actividadId);
+      const inv = investigaciones.find(i => i.id === idCambio);
       if (inv) {
-        horasInvestigacion = horasInvestigacion - (inv.horas || 0) + (nuevoValor || 0);
-        return;
+        horasInvestigacion = horasInvestigacion - (inv.horas || 0) + nuevoValor;
+        encontrado = true;
+        break;
       }
     }
-  });
+  }
 
   this.horasCursos = Math.max(0, horasCursos);
   this.horasNormales = Math.max(0, horasActividades);
   this.horasInvestigacion = Math.max(0, horasInvestigacion);
 
   this.totalHorasAsignadas = this.horasCursos + this.horasNormales + this.horasInvestigacion;
-  this.porcentajeCompletado = Math.round((this.totalHorasAsignadas / this.totalHorasDisponibles) * 100);
+  this.porcentajeCompletado = this.horasTotales > 0
+    ? Math.min(100, Math.round((this.totalHorasAsignadas / this.horasTotales) * 100))
+    : 0;
 }
 
   // ─── Horas disponibles actuales (reactivo a cambiosHoras) ─────────────────
@@ -710,9 +719,11 @@ calcularTotales() {
   productosSeleccionados: any[] = [];
   private ultimoIdToastEmitido = '';
 
+// ─── REEMPLAZA onHorasChange ───────────────────────────────────────────────
 onHorasChange(id: string, horas: number): void {
   if (horas == null || horas < 0) return;
 
+  // Obtener horas originales de BD
   let horasOriginales = 0;
   const horasActividadBD = this.getHorasAsignadasActividad(id);
   if (horasActividadBD !== null) {
@@ -724,20 +735,18 @@ onHorasChange(id: string, horas: number): void {
     }
   }
 
-  // Calcular total EXCLUYENDO este id para no contarlo dos veces
-  const cambiosSinEsteId = { ...this.cambiosHoras };
-  delete cambiosSinEsteId[id];
-  const totalSinEsteId = this.calcularTotalConCambios(cambiosSinEsteId);
-  const totalConNuevoValor = totalSinEsteId + horas;
+  // Simular el estado final con el nuevo valor para validar
+  const cambiosSimulados = { ...this.cambiosHoras, [id]: horas };
+  const totalSimulado = this.calcularTotalConCambios(cambiosSimulados);
 
-  if (totalConNuevoValor > this.horasTotales) {
+  if (totalSimulado > this.horasTotales) {
     this.messageService.add({
       severity: 'warn',
       summary: 'Advertencia',
       detail: 'No hay suficientes horas disponibles',
       life: 3000
     });
-    // ✅ Revertir VISUALMENTE creando nueva referencia del objeto
+    // Forzar revert visual con nueva referencia
     const valorActual = this.cambiosHoras[id] !== undefined
       ? this.cambiosHoras[id]
       : horasOriginales;
@@ -746,74 +755,64 @@ onHorasChange(id: string, horas: number): void {
     return;
   }
 
+  // Actualizar estado local (nueva referencia siempre para que Angular detecte)
   if (horas === horasOriginales) {
-    // ✅ Nueva referencia sin la key → Angular detecta el cambio
     const nuevosCambios = { ...this.cambiosHoras };
     delete nuevosCambios[id];
     this.cambiosHoras = nuevosCambios;
     this.idActividadEditando = null;
   } else {
-    // ✅ Nueva referencia con el nuevo valor
     this.cambiosHoras = { ...this.cambiosHoras, [id]: horas };
     this.idActividadEditando = id;
-    if (this.ultimoIdToastEmitido !== id) {
-      this.toastSuccessSubject.next('Actividad actualizada correctamente');
-      this.ultimoIdToastEmitido = id;
-    }
+    this.messageService.add({
+      severity: 'info',
+      summary: 'Cambio pendiente',
+      detail: 'Horas modificadas. Recuerda enviar la solicitud.',
+      life: 2500
+    });
   }
 
   this.calcularTotales();
 }
 
-  /**
-   * Calcula el total de horas asignadas aplicando un conjunto de cambios dado.
-   * Usado internamente para validar si el nuevo valor excede el límite.
-   */
-  private calcularTotalConCambios(cambios: { [id: string]: number }): number {
-    let horasActividades = this.actividadesPlanDeTrabajo.reduce((total, actividad) => {
-      return total + (actividad.horas || 0);
+private calcularTotalConCambios(cambios: { [id: string]: number }): number {
+  // Base: valores originales de BD
+  let horasActividades = this.actividadesPlanDeTrabajo.reduce((total, a) => {
+    return total + (a.horas || 0);
+  }, 0);
+
+  const horasCursos = this.asignaturas.reduce((total, a) => {
+    return total + (a.horasPresenciales || 0);
+  }, 0);
+
+  let horasInvestigacion = 0;
+  this.investigacionesPorSeccion.forEach((investigaciones) => {
+    horasInvestigacion += investigaciones.reduce((total, inv) => {
+      return total + (inv.horas || 0);
     }, 0);
+  });
 
-    let horasCursos = this.asignaturas.reduce((total, asignatura) => {
-      return total + (asignatura.horasPresenciales || 0);
-    }, 0);
+  // Aplicar los cambios del set dado
+  for (const [idCambio, nuevoValor] of Object.entries(cambios)) {
+    const actividad = this.actividadesPlanDeTrabajo.find(
+      a => a.actividades?.id === idCambio
+    );
+    if (actividad) {
+      horasActividades = horasActividades - (actividad.horas || 0) + nuevoValor;
+      continue;
+    }
 
-    let horasInvestigacion = 0;
-    this.investigacionesPorSeccion.forEach((investigaciones) => {
-      horasInvestigacion += investigaciones.reduce((total, inv) => {
-        return total + (inv.horas || 0);
-      }, 0);
-    });
-
-    Object.entries(cambios).forEach(([actividadId, nuevoValor]) => {
-      const actividad = this.actividadesPlanDeTrabajo.find(a => a.actividades?.id === actividadId);
-      if (actividad) {
-        horasActividades = horasActividades - (actividad.horas || 0) + (nuevoValor || 0);
-        return;
+    for (const [, investigaciones] of this.investigacionesPorSeccion) {
+      const inv = investigaciones.find(i => i.id === idCambio);
+      if (inv) {
+        horasInvestigacion = horasInvestigacion - (inv.horas || 0) + nuevoValor;
+        break;
       }
-
-      const asignatura = this.asignaturas.find(a => a.codAsignatura === actividadId);
-      if (asignatura) {
-        horasCursos = horasCursos - (asignatura.horasPresenciales || 0) + (nuevoValor || 0);
-        return;
-      }
-
-      for (const [, investigaciones] of this.investigacionesPorSeccion) {
-        const inv = investigaciones.find(i => i.id === actividadId);
-        if (inv) {
-          horasInvestigacion = horasInvestigacion - (inv.horas || 0) + (nuevoValor || 0);
-          return;
-        }
-      }
-    });
-
-    // Asegurar que no tienen valores negativos individuales
-    horasActividades = Math.max(0, horasActividades);
-    horasCursos = Math.max(0, horasCursos);
-    horasInvestigacion = Math.max(0, horasInvestigacion);
-
-    return horasActividades + horasCursos + horasInvestigacion;
+    }
   }
+
+  return Math.max(0, horasActividades) + horasCursos + Math.max(0, horasInvestigacion);
+}
   // ─────────────────────────────────────────────────────────────────────────
 
   isInputDisabled(id: string): boolean {
@@ -833,26 +832,22 @@ onHorasChange(id: string, horas: number): void {
     return false;
   }
 
-setMinHoras(id: string): number {
-  // ✅ Siempre 0: el usuario puede bajar horas libremente
-  // (el total se valida en onHorasChange, no en el min del input)
-  return 0;
-}
+setMinHoras(id: string): number { return 0; }
+
 
 setMaxHoras(id: string): number {
   const horasActuales = this.cambiosHoras[id] !== undefined
     ? this.cambiosHoras[id]
     : (this.getHorasAsignadasActividad(id) ?? 0);
 
-  // Horas disponibles = total permitido - todo lo demás (sin contar este id)
-  const cambiosSinEsteId = { ...this.cambiosHoras };
-  delete cambiosSinEsteId[id];
-  const totalSinEsteId = this.calcularTotalConCambios(cambiosSinEsteId);
-  const horasDisponibles = this.horasTotales - totalSinEsteId;
+  // Total SIN contar este id, para calcular cuánto queda disponible
+  const cambiosSinId = { ...this.cambiosHoras };
+  delete cambiosSinId[id];
+  const totalSinId = this.calcularTotalConCambios(cambiosSinId);
+  const disponible = Math.max(0, this.horasTotales - totalSinId);
+  const maxPosible = horasActuales + disponible;
 
-  // El máximo es lo que ya tiene + lo disponible
-  const maxPosible = horasActuales + horasDisponibles;
-
+  // Respetar horasMaximas de la actividad si aplica
   const actividadRef = this.seccionesPadres
     .flatMap(p => p.hijos)
     .flatMap(h => h.actividades || [])
@@ -861,13 +856,11 @@ setMaxHoras(id: string): number {
   if (actividadRef?.horasMaximas && actividadRef.horasMaximas < maxPosible) {
     return actividadRef.horasMaximas;
   }
-  return Math.max(horasActuales, maxPosible);
+  return maxPosible;
 }
 
-setMinInvestigacion(id: string): number {
-  // ✅ Igual que setMinHoras: siempre 0
-  return 0;
-}
+
+setMinInvestigacion(id: string): number { return 0; }
 
 
 setMaxInvestigacion(id: string): number {
@@ -881,12 +874,11 @@ setMaxInvestigacion(id: string): number {
     }
   }
 
-  const cambiosSinEsteId = { ...this.cambiosHoras };
-  delete cambiosSinEsteId[id];
-  const totalSinEsteId = this.calcularTotalConCambios(cambiosSinEsteId);
-  const horasDisponibles = this.horasTotales - totalSinEsteId;
-
-  return horasActuales + horasDisponibles;
+  const cambiosSinId = { ...this.cambiosHoras };
+  delete cambiosSinId[id];
+  const totalSinId = this.calcularTotalConCambios(cambiosSinId);
+  const disponible = Math.max(0, this.horasTotales - totalSinId);
+  return horasActuales + disponible;
 }
 
   esInvestigacion(id: string): boolean {
@@ -902,9 +894,9 @@ setMaxInvestigacion(id: string): number {
     return Object.keys(this.cambiosHoras).some(id => id !== idActual);
   }
 
-  hasCambios(): boolean {
-    return Object.keys(this.cambiosHoras).length > 0 && this.calcularHorasDisponibles() === 0;
-  }
+hasCambios(): boolean {
+  return Object.keys(this.cambiosHoras).length > 0;
+}
 
   getTotalHorasSolicitadas(): number {
     const entries = Object.entries(this.cambiosHoras);

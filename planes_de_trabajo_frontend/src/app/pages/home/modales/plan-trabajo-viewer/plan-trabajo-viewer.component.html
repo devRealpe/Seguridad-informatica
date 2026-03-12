@@ -62,7 +62,7 @@
           >
           </p-button>
           <p-button
-            *ngIf="hasCambios()"
+            *ngIf="hasCambios() && calcularHorasDisponibles() === 0"
             label="Solicitar cambio a vicerrectoría"
             icon="pi pi-send"
             severity="warn"
@@ -76,9 +76,13 @@
         <!-- Fila 2: Indicador de Horas Disponibles (solo en modo edición) -->
         <div
           *ngIf="modoEdicion"
-          class="mt-3 pt-3"
+          class="mt-3 pt-3 horas-disponibles-sticky"
           [style]="{
-            'border-top': '1px solid var(--p-surface-200)'
+            'border-top': '1px solid var(--p-surface-200)',
+            position: 'sticky',
+            top: '0',
+            'z-index': '10',
+            background: 'var(--p-surface-0)'
           }"
         >
           <div

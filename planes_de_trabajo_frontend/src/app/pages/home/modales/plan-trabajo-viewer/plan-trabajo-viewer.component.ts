@@ -383,6 +383,10 @@ calcularTotales() {
         break;
       }
     }
+    // Si no es actividad ni investigación existente, es una nueva actividad normal
+    if (!actividad && !encontrado) {
+      horasActividades += nuevoValor;
+    }
   }
 
   this.horasCursos = Math.max(0, horasCursos);
@@ -720,8 +724,13 @@ calcularTotales() {
   private ultimoIdToastEmitido = '';
 
 // ─── REEMPLAZA onHorasChange ───────────────────────────────────────────────
-onHorasChange(id: string, horas: number): void {
-  if (horas == null || horas < 0) return;
+
+onHorasChange(id: string, horas: number | null | undefined): void {
+  // Si el valor es null o undefined, tomarlo como 0
+  if (horas == null || horas === undefined) {
+    horas = 0;
+  }
+  if (horas < 0) return;
 
   // Obtener horas originales de BD
   let horasOriginales = 0;

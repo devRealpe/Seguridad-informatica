@@ -108,12 +108,14 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     debounceTime(600),
     distinctUntilChanged()
   ).subscribe(detail => {
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Éxito',
-      detail,
-      life: 3000
-    });
+    if (detail) {
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Éxito',
+        detail,
+        life: 3000
+      });
+    }
   });
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -715,40 +717,33 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   idActividadEditando: string | null = null;
   mostrarModalProductos = false;
   productosSeleccionados: any[] = [];
+  private ultimoIdToastEmitido = '';
 
   onHorasChange(id: string, horas: number): void {
     if (horas < 0) return;
 
-    // Buscar horas originales en actividades
+    // Horas originales guardadas en BD
     let horasOriginales: number | null = this.getHorasAsignadasActividad(id);
-
-    // Si no está en actividades, buscar en investigaciones
     if (horasOriginales === null) {
-      for (const [seccionId, inversiones] of this.investigacionesPorSeccion) {
+      for (const [, inversiones] of this.investigacionesPorSeccion) {
         const inv = inversiones.find(i => i.id === id);
-        if (inv) {
-          horasOriginales = inv.horas;
-          break;
-        }
+        if (inv) { horasOriginales = inv.horas; break; }
       }
     }
 
-    // Calcular horas disponibles ANTES de aplicar el cambio
-    // (sin contar el cambio actual del mismo id que ya podría estar en cambiosHoras)
-    const cambiosPreviosSinEsteId = { ...this.cambiosHoras };
-    delete cambiosPreviosSinEsteId[id];
+    // Crear cambios propuestos incluyendo el nuevo valor
+    const cambiosPropuestos = { ...this.cambiosHoras };
+    cambiosPropuestos[id] = horas;
 
-    // Recalcular el total con los cambios previos pero sin el id actual
-    let horasAsignadasConCambiosPrevios = this.calcularTotalConCambios(cambiosPreviosSinEsteId);
-    const horasDisponiblesReales = this.horasTotales - horasAsignadasConCambiosPrevios;
+    // Calcular total con cambios propuestos
+    const totalConCambiosPropuestos = this.calcularTotalConCambios(cambiosPropuestos);
 
-    // Validar que la diferencia no supere las horas disponibles (igual que seccion-normal)
-    const diferencia = (horas || 0) - (horasOriginales || 0);
-    if (diferencia > horasDisponiblesReales) {
+    // Validar si se excede la capacidad
+    if (totalConCambiosPropuestos > this.horasTotales) {
       this.messageService.add({
         severity: 'warn',
         summary: 'Advertencia',
-        detail: 'No hay suficientes horas disponibles',
+        detail: `No hay suficientes horas disponibles. Requerido: ${totalConCambiosPropuestos}h, Disponible: ${this.horasTotales}h`,
         life: 3000
       });
       return;
@@ -764,11 +759,13 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     } else {
       this.cambiosHoras[id] = horas;
       this.idActividadEditando = id;
-      // ← Toast debounced: sólo se emite uno cada 600ms por mensaje idéntico
-      this.toastSuccessSubject.next('Actividad actualizada exitosamente');
+      // Solo emitir toast si es diferente al anterior para evitar duplicados
+      if (this.ultimoIdToastEmitido !== id) {
+        this.toastSuccessSubject.next(`Actividad **${id}** actualizada`);
+        this.ultimoIdToastEmitido = id;
+      }
     }
 
-    // Recalcular totales para reflejar el nuevo valor en el contador de horas
     this.calcularTotales();
   }
 
@@ -795,26 +792,31 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     Object.entries(cambios).forEach(([actividadId, nuevoValor]) => {
       const actividad = this.actividadesPlanDeTrabajo.find(a => a.actividades?.id === actividadId);
       if (actividad) {
-        horasActividades += (nuevoValor || 0) - (actividad.horas || 0);
+        horasActividades = horasActividades - (actividad.horas || 0) + (nuevoValor || 0);
         return;
       }
 
       const asignatura = this.asignaturas.find(a => a.codAsignatura === actividadId);
       if (asignatura) {
-        horasCursos += (nuevoValor || 0) - (asignatura.horasPresenciales || 0);
+        horasCursos = horasCursos - (asignatura.horasPresenciales || 0) + (nuevoValor || 0);
         return;
       }
 
       for (const [, investigaciones] of this.investigacionesPorSeccion) {
         const inv = investigaciones.find(i => i.id === actividadId);
         if (inv) {
-          horasInvestigacion += (nuevoValor || 0) - (inv.horas || 0);
+          horasInvestigacion = horasInvestigacion - (inv.horas || 0) + (nuevoValor || 0);
           return;
         }
       }
     });
 
-    return Math.max(0, horasActividades) + Math.max(0, horasCursos) + Math.max(0, horasInvestigacion);
+    // Asegurar que no tienen valores negativos individuales
+    horasActividades = Math.max(0, horasActividades);
+    horasCursos = Math.max(0, horasCursos);
+    horasInvestigacion = Math.max(0, horasInvestigacion);
+
+    return horasActividades + horasCursos + horasInvestigacion;
   }
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -846,7 +848,13 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     const horasActuales = this.cambiosHoras[id] !== undefined
       ? this.cambiosHoras[id]
       : (this.getHorasAsignadasActividad(id) ?? 0);
-    const maxPosible = horasActuales + this.calcularHorasDisponibles();
+    
+    // Calcular horas disponibles considerando el total actual con cambios (sin este id)
+    const cambiosSinEsteId = { ...this.cambiosHoras };
+    delete cambiosSinEsteId[id];
+    const totalSinEsteId = this.calcularTotalConCambios(cambiosSinEsteId);
+    const horasDisponibles = this.horasTotales - totalSinEsteId;
+    const maxPosible = horasActuales + horasDisponibles;
 
     const actividadRef = this.seccionesPadres
       .flatMap(p => p.hijos)
@@ -855,7 +863,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     if (actividadRef?.horasMaximas && actividadRef.horasMaximas < maxPosible) {
       return actividadRef.horasMaximas;
     }
-    return maxPosible;
+    return Math.max(horasActuales, maxPosible);
   }
 
   setMinInvestigacion(id: string): number {
@@ -881,7 +889,14 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
         if (inv) { horasActuales = inv.horas; break; }
       }
     }
-    return horasActuales + this.calcularHorasDisponibles();
+    
+    // Calcular horas disponibles considerando el total actual con cambios (sin este id)
+    const cambiosSinEsteId = { ...this.cambiosHoras };
+    delete cambiosSinEsteId[id];
+    const totalSinEsteId = this.calcularTotalConCambios(cambiosSinEsteId);
+    const horasDisponibles = this.horasTotales - totalSinEsteId;
+    
+    return horasActuales + horasDisponibles;
   }
 
   esInvestigacion(id: string): boolean {
@@ -898,7 +913,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   }
 
   hasCambios(): boolean {
-    return Object.keys(this.cambiosHoras).length > 0;
+    return Object.keys(this.cambiosHoras).length > 0 && this.calcularHorasDisponibles() === 0;
   }
 
   getTotalHorasSolicitadas(): number {
@@ -1021,6 +1036,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
   cancelarEnvioVicerrectoria(): void {
     this.mostrarModalConfirmacionCambio = false;
     this.descripcionCambio = '';
+    this.ultimoIdToastEmitido = '';
   }
 
   private enviarNotificacionVicerrectoria(): void {
@@ -1090,6 +1106,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
         }
         this.cargarEstadoFirmas();
         this.estadoCambiado.emit('Aprobado');
+        this.ultimoIdToastEmitido = '';
       },
       error: (error) => {
         this.cargandoAprobacion = false;
@@ -1119,6 +1136,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
         }
         this.cargarEstadoFirmas();
         this.estadoCambiado.emit('Rechazado');
+        this.ultimoIdToastEmitido = '';
       },
       error: (error) => {
         this.cargandoAprobacion = false;

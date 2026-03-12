@@ -102,7 +102,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       firmaDecano: false
     };
 
-  // ─── Debounce para evitar toasts duplicados ───────────────────────────────
+  // Debounce para evitar toasts duplicados 
   private toastSuccessSubject = new Subject<string>();
   private toastSuccessSubscription = this.toastSuccessSubject.pipe(
     debounceTime(600),
@@ -345,55 +345,46 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
       });
   }
 
-  calcularTotales() {
-    let horasActividades = this.actividadesPlanDeTrabajo.reduce((total, actividad) => {
-      return total + (actividad.horas || 0);
+calcularTotales() {
+  let horasActividades = this.actividadesPlanDeTrabajo.reduce((total, actividad) => {
+    return total + (actividad.horas || 0);
+  }, 0);
+
+  let horasCursos = this.asignaturas.reduce((total, asignatura) => {
+    return total + (asignatura.horasPresenciales || 0);
+  }, 0);
+
+  let horasInvestigacion = 0;
+  this.investigacionesPorSeccion.forEach((investigaciones) => {
+    horasInvestigacion += investigaciones.reduce((total, inv) => {
+      return total + (inv.horas || 0);
     }, 0);
+  });
 
-    let horasCursos = this.asignaturas.reduce((total, asignatura) => {
-      return total + (asignatura.horasPresenciales || 0);
-    }, 0);
+  // Aplicar cambios pendientes
+  Object.entries(this.cambiosHoras).forEach(([actividadId, nuevoValor]) => {
+    const actividad = this.actividadesPlanDeTrabajo.find(a => a.actividades?.id === actividadId);
+    if (actividad) {
+      horasActividades = horasActividades - (actividad.horas || 0) + (nuevoValor || 0);
+      return;
+    }
 
-    let horasInvestigacion = 0;
-    this.investigacionesPorSeccion.forEach((investigaciones) => {
-      horasInvestigacion += investigaciones.reduce((total, inv) => {
-        return total + (inv.horas || 0);
-      }, 0);
-    });
-
-    // Aplicar cambios pendientes del objeto cambiosHoras
-    Object.entries(this.cambiosHoras).forEach(([actividadId, nuevoValor]) => {
-      const actividad = this.actividadesPlanDeTrabajo.find(a => a.actividades?.id === actividadId);
-      if (actividad) {
-        const diferencia = (nuevoValor || 0) - (actividad.horas || 0);
-        horasActividades += diferencia;
+    for (const [, investigaciones] of this.investigacionesPorSeccion) {
+      const inv = investigaciones.find(i => i.id === actividadId);
+      if (inv) {
+        horasInvestigacion = horasInvestigacion - (inv.horas || 0) + (nuevoValor || 0);
         return;
       }
+    }
+  });
 
-      const asignatura = this.asignaturas.find(a => a.codAsignatura === actividadId);
-      if (asignatura) {
-        const diferencia = (nuevoValor || 0) - (asignatura.horasPresenciales || 0);
-        horasCursos += diferencia;
-        return;
-      }
+  this.horasCursos = Math.max(0, horasCursos);
+  this.horasNormales = Math.max(0, horasActividades);
+  this.horasInvestigacion = Math.max(0, horasInvestigacion);
 
-      for (const [seccionId, investigaciones] of this.investigacionesPorSeccion) {
-        const inv = investigaciones.find(i => i.id === actividadId);
-        if (inv) {
-          const diferencia = (nuevoValor || 0) - (inv.horas || 0);
-          horasInvestigacion += diferencia;
-          return;
-        }
-      }
-    });
-
-    this.horasCursos = Math.max(0, horasCursos);
-    this.horasNormales = Math.max(0, horasActividades);
-    this.horasInvestigacion = Math.max(0, horasInvestigacion);
-
-    this.totalHorasAsignadas = this.horasCursos + this.horasNormales + this.horasInvestigacion;
-    this.porcentajeCompletado = Math.round((this.totalHorasAsignadas / this.totalHorasDisponibles) * 100);
-  }
+  this.totalHorasAsignadas = this.horasCursos + this.horasNormales + this.horasInvestigacion;
+  this.porcentajeCompletado = Math.round((this.totalHorasAsignadas / this.totalHorasDisponibles) * 100);
+}
 
   // ─── Horas disponibles actuales (reactivo a cambiosHoras) ─────────────────
   calcularHorasDisponibles(): number {
@@ -712,62 +703,56 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ─── Control de cambios de horas ─────────────────────────────────────────
+  // Control de cambios de horas
   cambiosHoras: { [id: string]: number } = {};
   idActividadEditando: string | null = null;
   mostrarModalProductos = false;
   productosSeleccionados: any[] = [];
   private ultimoIdToastEmitido = '';
 
-  onHorasChange(id: string, horas: number): void {
-    if (horas < 0) return;
+onHorasChange(id: string, horas: number): void {
+  if (horas == null || horas < 0) return;
 
-    // Horas originales guardadas en BD
-    let horasOriginales: number | null = this.getHorasAsignadasActividad(id);
-    if (horasOriginales === null) {
-      for (const [, inversiones] of this.investigacionesPorSeccion) {
-        const inv = inversiones.find(i => i.id === id);
-        if (inv) { horasOriginales = inv.horas; break; }
-      }
+  // Horas originales guardadas en BD (0 si no tiene asignadas)
+  let horasOriginales = 0;
+  const horasActividadBD = this.getHorasAsignadasActividad(id);
+  if (horasActividadBD !== null) {
+    horasOriginales = horasActividadBD;
+  } else {
+    for (const [, inversiones] of this.investigacionesPorSeccion) {
+      const inv = inversiones.find(i => i.id === id);
+      if (inv) { horasOriginales = inv.horas ?? 0; break; }
     }
-
-    // Crear cambios propuestos incluyendo el nuevo valor
-    const cambiosPropuestos = { ...this.cambiosHoras };
-    cambiosPropuestos[id] = horas;
-
-    // Calcular total con cambios propuestos
-    const totalConCambiosPropuestos = this.calcularTotalConCambios(cambiosPropuestos);
-
-    // Validar si se excede la capacidad
-    if (totalConCambiosPropuestos > this.horasTotales) {
-      this.messageService.add({
-        severity: 'warn',
-        summary: 'Advertencia',
-        detail: `No hay suficientes horas disponibles. Requerido: ${totalConCambiosPropuestos}h, Disponible: ${this.horasTotales}h`,
-        life: 3000
-      });
-      return;
-    }
-
-    // Actualizar o limpiar cambiosHoras
-    if (horasOriginales !== null && horas === horasOriginales) {
-      delete this.cambiosHoras[id];
-      this.idActividadEditando = null;
-    } else if (horasOriginales === null && (horas === 0 || horas === null)) {
-      delete this.cambiosHoras[id];
-      this.idActividadEditando = null;
-    } else {
-      this.cambiosHoras[id] = horas;
-      this.idActividadEditando = id;
-      // Solo emitir toast si es diferente al anterior para evitar duplicados
-      if (this.ultimoIdToastEmitido !== id) {
-        this.toastSuccessSubject.next(`Actividad **${id}** actualizada`);
-        this.ultimoIdToastEmitido = id;
-      }
-    }
-
-    this.calcularTotales();
   }
+
+  // Cambios propuestos incluyendo el nuevo valor
+  const cambiosPropuestos = { ...this.cambiosHoras, [id]: horas };
+  const totalConCambiosPropuestos = this.calcularTotalConCambios(cambiosPropuestos);
+
+  if (totalConCambiosPropuestos > this.horasTotales) {
+    this.messageService.add({
+      severity: 'warn',
+      summary: 'Advertencia',
+      detail: 'No hay suficientes horas disponibles',
+      life: 3000
+    });
+    return;
+  }
+
+  if (horas === horasOriginales) {
+    delete this.cambiosHoras[id];
+    this.idActividadEditando = null;
+  } else {
+    this.cambiosHoras[id] = horas;
+    this.idActividadEditando = id;
+    if (this.ultimoIdToastEmitido !== id) {
+      this.toastSuccessSubject.next('Actividad actualizada correctamente');
+      this.ultimoIdToastEmitido = id;
+    }
+  }
+
+  this.calcularTotales();
+}
 
   /**
    * Calcula el total de horas asignadas aplicando un conjunto de cambios dado.
@@ -1067,7 +1052,7 @@ export class PlanTrabajoViewerComponent implements OnInit, OnDestroy {
     this.productosSeleccionados = [];
   }
 
-  // ─── Aprobación y rechazo ────────────────────────────────────────────────
+  // Aprobación y rechazo
   mostrarModalConfirmacionAprobar = false;
   mostrarModalRechazar = false;
   cargandoAprobacion = false;
